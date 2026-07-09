@@ -1,0 +1,113 @@
+{
+  "common": {
+    "loading": "Yükleniyor...",
+    "error": "Bir hata oluştu",
+    "retry": "Tekrar dene",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "confirm": "Onayla",
+    "back": "Geri",
+    "next": "İleri",
+    "close": "Kapat",
+    "passengers": "Yolcu",
+    "currency": "TRY"
+  },
+  "nav": {
+    "home": "Ana Sayfa",
+    "search": "Transfer Ara",
+    "myBookings": "Rezervasyonlarım",
+    "login": "Giriş Yap",
+    "register": "Kayıt Ol",
+    "logout": "Çıkış"
+  },
+  "home": {
+    "hero": {
+      "title": "Dalaman Havalimanı Transfer",
+      "subtitle": "Güvenli, konforlu ve zamanında ulaşım hizmeti",
+      "cta": "Hemen Rezervasyon Yap"
+    },
+    "search": {
+      "from": "Nereden",
+      "to": "Nereye",
+      "date": "Transfer Tarihi",
+      "passengers": "Yolcu Sayısı",
+      "flight": "Uçuş Numarası (opsiyonel)",
+      "search": "Transfer Ara",
+      "returnTrip": "Dönüş transferi de ekle"
+    },
+    "features": {
+      "safe": { "title": "Güvenli Seyahat", "desc": "Profesyonel şoförler, sigortalı araçlar" },
+      "ontime": { "title": "Zamanında Ulaşım", "desc": "Uçuş takibi ile otomatik güncelleme" },
+      "comfort": { "title": "Konforlu Yolculuk", "desc": "Sedan, VIP Vito ve Minibüs seçenekleri" },
+      "support": { "title": "7/24 Destek", "desc": "Her an yanınızda" }
+    }
+  },
+  "search": {
+    "title": "Transfer Sonuçları",
+    "noResult": "Bu güzergah için sonuç bulunamadı",
+    "perPerson": "Kişi başı",
+    "total": "Toplam",
+    "capacity": "{{count}} kişiye kadar",
+    "selectVehicle": "Seç",
+    "surcharge": "Ek ücret uygulanıyor",
+    "features": {
+      "water": "İçme Suyu",
+      "wifi": "Wi-Fi",
+      "child_seat": "Çocuk Koltuğu",
+      "luggage": "Ekstra Bagaj"
+    }
+  },
+  "booking": {
+    "title": "Rezervasyon Bilgileri",
+    "guestName": "Ad Soyad",
+    "guestEmail": "E-posta",
+    "guestPhone": "Telefon",
+    "flightNumber": "Uçuş Numarası",
+    "extraRequests": "Özel İstekler",
+    "couponCode": "Kupon Kodu",
+    "applyCoupon": "Uygula",
+    "couponApplied": "Kupon uygulandı! {{discount}} indirim",
+    "summary": "Rezervasyon Özeti",
+    "route": "Güzergah",
+    "vehicle": "Araç",
+    "date": "Transfer Tarihi",
+    "price": "Fiyat",
+    "discount": "İndirim",
+    "total": "Ödenecek Tutar",
+    "proceedPayment": "Ödemeye Geç",
+    "termsAgreement": "Kullanım koşullarını kabul ediyorum",
+    "kvkkAgreement": "KVKK kapsamında kişisel verilerimin işlenmesine onay veriyorum"
+  },
+  "payment": {
+    "title": "Ödeme",
+    "processing": "Ödeme işleniyor...",
+    "secure": "256-bit SSL ile güvenli ödeme",
+    "paytr": "Kart ile öde"
+  },
+  "confirmation": {
+    "success": "Rezervasyonunuz alındı!",
+    "bookingRef": "Rezervasyon No",
+    "emailSent": "Onay e-postası gönderildi",
+    "trackBooking": "Rezervasyonu takip et",
+    "newBooking": "Yeni rezervasyon yap"
+  },
+  "myBookings": {
+    "title": "Rezervasyonlarım",
+    "empty": "Henüz rezervasyonunuz bulunmuyor",
+    "status": {
+      "PENDING": "Bekliyor",
+      "CONFIRMED": "Onaylandı",
+      "ASSIGNED": "Şoför Atandı",
+      "EN_ROUTE": "Yolda",
+      "COMPLETED": "Tamamlandı",
+      "CANCELLED": "İptal"
+    }
+  },
+  "errors": {
+    "required": "Bu alan zorunludur",
+    "email": "Geçerli bir e-posta giriniz",
+    "phone": "Geçerli bir telefon numarası giriniz",
+    "minLength": "En az {{min}} karakter giriniz",
+    "networkError": "Bağlantı hatası, lütfen tekrar deneyin"
+  }
+}
