@@ -66,6 +66,7 @@ model User {
   lastName      String
   passwordHash  String?
   role          Role      @default(CUSTOMER)
+  isActive      Boolean   @default(true)    // admin tarafından deaktive edilebilir
   isGuest       Boolean   @default(false)   // guest checkout
   consentGiven  Boolean   @default(false)   // KVKK açık rıza
   consentAt     DateTime?
@@ -167,6 +168,7 @@ model Booking {
   returnDate    DateTime?
 
   extraRequests String?   // bebek koltuğu, tekerlekli sandalye vb.
+  notes         String?   // operatör notları (iç kullanım)
 
   price    Decimal       @db.Decimal(10, 2)
   currency String        @default("TRY")

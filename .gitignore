@@ -5,8 +5,8 @@ build/
 .env.local
 .env.*.local
 
-# Prisma
-backend/prisma/migrations/
+# Prisma — migration'lar commit edilmeli (sadece dev.db ve .env ignore edilir)
+# backend/prisma/migrations/  ← intentionally NOT ignored
 
 # Logs
 *.log
