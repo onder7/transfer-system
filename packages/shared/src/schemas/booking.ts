@@ -15,6 +15,9 @@ export const SearchTransferSchema = z.object({
 });
 
 export const CreateBookingSchema = z.object({
+  // Çift booking koruması — client UUID üretir, aynı key tekrar gelirse mevcut booking döner
+  idempotencyKey: z.string().uuid(),
+
   // Transfer detayı
   fromLocationId:   z.string().min(1),
   toLocationId:     z.string().min(1),

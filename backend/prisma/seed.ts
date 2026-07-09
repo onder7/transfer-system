@@ -97,6 +97,19 @@ async function main() {
     create: { id: 'surge_night', name: 'Gece Zammı', multiplier: 1.20, startHour: 22, endHour: 6 },
   });
 
+  // Test kuponu
+  await prisma.coupon.upsert({
+    where:  { code: 'HOSGELDIN10' },
+    update: {},
+    create: {
+      code:         'HOSGELDIN10',
+      discountType: 'percent',
+      amount:       10,
+      maxUses:      100,
+      isActive:     true,
+    },
+  });
+
   console.log('✅ Seed tamamlandı');
 }
 
