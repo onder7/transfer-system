@@ -1,0 +1,23 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.*.local
+
+# Prisma
+backend/prisma/migrations/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vite
+apps/*/dist/
+
+# TypeScript cache
+*.tsbuildinfo

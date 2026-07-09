@@ -1,0 +1,15 @@
+{
+  "name": "transfer-system",
+  "private": true,
+  "workspaces": ["backend", "apps/*", "packages/*"],
+  "scripts": {
+    "dev:backend": "npm run dev -w backend",
+    "dev:web":     "npm run dev -w apps/web",
+    "dev:admin":   "npm run dev -w apps/admin",
+    "build":       "npm run build -w packages/shared && npm run build -w backend && npm run build -w apps/web && npm run build -w apps/admin",
+    "test":        "npm run test -w backend"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
