@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { createHash } from 'crypto';
+import { hashPassword } from '../src/utils/password.js';
 
 const prisma = new PrismaClient();
 
@@ -13,7 +13,7 @@ async function main() {
       firstName:    'Admin',
       lastName:     'User',
       role:         'ADMIN',
-      passwordHash: createHash('sha256').update('admin123!').digest('hex'), // dev only
+      passwordHash: await hashPassword('admin123!'), // dev only
       consentGiven: true,
       consentAt:    new Date(),
     },

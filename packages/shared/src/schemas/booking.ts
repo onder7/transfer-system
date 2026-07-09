@@ -1,26 +1,30 @@
 import { z } from 'zod';
 
 export const SearchTransferSchema = z.object({
-  fromLocationId: z.string().cuid(),
-  toLocationId:   z.string().cuid(),
+  fromLocationId: z.string().min(1),
+  toLocationId:   z.string().min(1),
   transferDate:   z.string().datetime(),
-  passengerCount: z.number().int().min(1).max(20),
-  returnFlight:   z.boolean().default(false),
+  // Query string'den string gelir, coerce ile dönüştür
+  passengerCount: z.coerce.number().int().min(1).max(20),
+  returnFlight:   z
+    .union([z.boolean(), z.enum(['true', 'false'])])
+    .transform((v) => v === true || v === 'true')
+    .default(false),
   returnDate:     z.string().datetime().optional(),
   currency:       z.enum(['TRY', 'EUR', 'GBP']).default('TRY'),
 });
 
 export const CreateBookingSchema = z.object({
   // Transfer detayı
-  fromLocationId:   z.string().cuid(),
-  toLocationId:     z.string().cuid(),
+  fromLocationId:   z.string().min(1),
+  toLocationId:     z.string().min(1),
   customFromAddress: z.string().optional(),
   customFromLat:    z.number().optional(),
   customFromLng:    z.number().optional(),
   customToAddress:  z.string().optional(),
   customToLat:      z.number().optional(),
   customToLng:      z.number().optional(),
-  vehicleClassId:   z.string().cuid(),
+  vehicleClassId:   z.string().min(1),
   transferDate:     z.string().datetime(),
   passengerCount:   z.number().int().min(1).max(20),
   flightNumber:     z.string().optional(),
@@ -39,9 +43,9 @@ export const CreateBookingSchema = z.object({
 
 export const ValidateCouponSchema = z.object({
   code:           z.string().min(1),
-  fromLocationId: z.string().cuid(),
-  toLocationId:   z.string().cuid(),
-  vehicleClassId: z.string().cuid(),
+  fromLocationId: z.string().min(1),
+  toLocationId:   z.string().min(1),
+  vehicleClassId: z.string().min(1),
   currency:       z.enum(['TRY', 'EUR', 'GBP']).default('TRY'),
 });
 
