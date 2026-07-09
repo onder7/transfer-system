@@ -5,15 +5,16 @@ const prisma = new PrismaClient();
 
 async function main() {
   // Admin kullanıcısı
+  const adminHash = await hashPassword('admin123!');
   await prisma.user.upsert({
     where:  { email: 'admin@transfer.local' },
-    update: {},
+    update: { passwordHash: adminHash },
     create: {
       email:        'admin@transfer.local',
       firstName:    'Admin',
       lastName:     'User',
       role:         'ADMIN',
-      passwordHash: await hashPassword('admin123!'), // dev only
+      passwordHash: adminHash,
       consentGiven: true,
       consentAt:    new Date(),
     },
@@ -95,6 +96,23 @@ async function main() {
     where:  { id: 'surge_night' },
     update: {},
     create: { id: 'surge_night', name: 'Gece Zammı', multiplier: 1.20, startHour: 22, endHour: 6 },
+  });
+
+  // Şoför kullanıcısı
+  const soforHash = await hashPassword('sofor123!');
+  await prisma.user.upsert({
+    where:  { email: 'sofor@transfer.local' },
+    update: { passwordHash: soforHash },
+    create: {
+      email:        'sofor@transfer.local',
+      firstName:    'Mehmet',
+      lastName:     'Şoför',
+      phone:        '05351234567',
+      role:         'DRIVER',
+      passwordHash: soforHash,
+      consentGiven: true,
+      consentAt:    new Date(),
+    },
   });
 
   // Test kuponu

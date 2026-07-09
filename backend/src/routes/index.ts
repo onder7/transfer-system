@@ -5,6 +5,7 @@ import { transferRouter } from './transfer.route.js';
 import { couponRouter }   from './coupon.route.js';
 import { bookingRouter }  from './booking.route.js';
 import { paymentRouter }  from './payment.route.js';
+import { driverRouter }   from './driver.route.js';
 
 export const router = Router();
 
@@ -18,5 +19,6 @@ router.use('/transfers', transferRouter);
 router.use('/coupons',   couponRouter);
 router.use('/bookings',  bookingRouter);
 router.use('/payments',  paymentRouter);
+router.use('/driver',    driverRouter);
 
 // router.use('/admin', adminRouter); — Faz 5
