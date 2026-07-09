@@ -95,16 +95,19 @@ model Location {
 }
 
 model VehicleClass {
-  id        String   @id @default(cuid())
-  name      String
-  nameEn    String?
-  capacity  Int
-  features  String[] // ["wifi","water","child_seat"]
-  imageUrl  String?
-  isActive  Boolean  @default(true)
+  id              String   @id @default(cuid())
+  name            String
+  nameEn          String?
+  capacity        Int               // maksimum yolcu sayısı
+  luggageCapacity Int      @default(2) // bagaj adedi
+  isShared        Boolean  @default(false) // paylaşımlı (shuttle) → fiyat kişi başı
+  features        String[] // ["wifi","water","child_seat","luggage"]
+  imageUrl        String?
+  isActive        Boolean  @default(true)
 
   prices      PriceMatrix[]
   assignments DriverAssignment[]
+  bookings    Booking[]
 }
 
 model PriceMatrix {
@@ -157,9 +160,11 @@ model Booking {
   customToLat       Float?
   customToLng       Float?
 
+  vehicleClass   VehicleClass @relation(fields: [vehicleClassId], references: [id])
   vehicleClassId String
   transferDate   DateTime
-  passengerCount Int
+  adultCount     Int      @default(1)
+  childCount     Int      @default(0)
 
   // Uçuş bilgileri
   flightNumber  String?

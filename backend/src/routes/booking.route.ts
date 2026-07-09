@@ -7,6 +7,7 @@ import {
   getBookingHandler,
   getBookingByRefHandler,
   cancelBookingHandler,
+  getMyBookingsHandler,
 } from '../controllers/booking.controller.js';
 
 export const bookingRouter = Router();
@@ -20,6 +21,13 @@ bookingRouter.post(
 
 // Referans ile sorgula — guest'ler için (e-posta onayında link)
 bookingRouter.get('/ref/:ref', getBookingByRefHandler);
+
+// Müşteri kendi rezervasyonlarını listelesin
+bookingRouter.get(
+  '/my',
+  authenticate, checkBlacklist,
+  getMyBookingsHandler,
+);
 
 // ID ile sorgula — auth gerekli
 bookingRouter.get(

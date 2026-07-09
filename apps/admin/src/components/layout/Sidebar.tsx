@@ -23,46 +23,55 @@ export function Sidebar() {
   const isAdmin = user?.role === 'ADMIN';
 
   return (
-    <aside className="flex w-64 flex-col bg-[--color-sidebar-bg] text-white">
+    <aside
+      className="flex w-64 shrink-0 flex-col"
+      style={{ backgroundColor: '#1e2a3b' }}
+    >
       {/* Logo */}
-      <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
+      <div
+        className="flex h-16 items-center gap-3 px-5"
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.1)' }}
+      >
         <span className="text-2xl">✈️</span>
-        <span className="font-bold text-lg tracking-tight">Transfer Yönetim</span>
+        <span className="text-lg font-bold tracking-tight text-white">Transfer Yönetim</span>
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
         {NAV.filter((n) => !n.adminOnly || isAdmin).map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors no-underline
-               ${isActive
-                 ? 'bg-[--color-sidebar-active] text-white'
-                 : 'text-white/70 hover:bg-[--color-sidebar-hover] hover:text-white'}`
-            }
+            className="sidebar-link"
           >
-            <span className="text-lg">{item.icon}</span>
+            <span className="text-lg leading-none">{item.icon}</span>
             {item.label}
           </NavLink>
         ))}
       </nav>
 
-      {/* Kullanıcı bilgisi */}
-      <div className="border-t border-white/10 p-4">
+      {/* Kullanıcı */}
+      <div className="p-4" style={{ borderTop: '1px solid rgba(255,255,255,0.1)' }}>
         <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold">
+          <div
+            className="flex size-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+            style={{ backgroundColor: '#2563eb' }}
+          >
             {user?.firstName?.[0]}{user?.lastName?.[0]}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{user?.firstName} {user?.lastName}</p>
-            <p className="truncate text-xs text-white/50">{user?.role}</p>
+            <p className="truncate text-sm font-medium text-white">
+              {user?.firstName} {user?.lastName}
+            </p>
+            <p className="truncate text-xs" style={{ color: 'rgba(255,255,255,0.45)' }}>
+              {user?.role}
+            </p>
           </div>
           <button
             onClick={() => logout()}
-            title="Çıkış"
-            className="rounded p-1 text-white/50 hover:text-white"
+            title="Çıkış yap"
+            className="sidebar-link rounded p-1 text-base"
+            style={{ gap: 0 }}
           >
             ↩
           </button>

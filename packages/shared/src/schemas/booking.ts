@@ -5,7 +5,8 @@ export const SearchTransferSchema = z.object({
   toLocationId:   z.string().min(1),
   transferDate:   z.string().datetime(),
   // Query string'den string gelir, coerce ile dönüştür
-  passengerCount: z.coerce.number().int().min(1).max(20),
+  adultCount: z.coerce.number().int().min(1).max(20).default(1),
+  childCount: z.coerce.number().int().min(0).max(10).default(0),
   returnFlight:   z
     .union([z.boolean(), z.enum(['true', 'false'])])
     .transform((v) => v === true || v === 'true')
@@ -29,7 +30,8 @@ export const CreateBookingSchema = z.object({
   customToLng:      z.number().optional(),
   vehicleClassId:   z.string().min(1),
   transferDate:     z.string().datetime(),
-  passengerCount:   z.number().int().min(1).max(20),
+  adultCount:       z.number().int().min(1).max(20).default(1),
+  childCount:       z.number().int().min(0).max(10).default(0),
   flightNumber:     z.string().optional(),
   returnFlight:     z.boolean().default(false),
   returnFlightNo:   z.string().optional(),
@@ -52,6 +54,6 @@ export const ValidateCouponSchema = z.object({
   currency:       z.enum(['TRY', 'EUR', 'GBP']).default('TRY'),
 });
 
-export type SearchTransferInput  = z.infer<typeof SearchTransferSchema>;
-export type CreateBookingInput   = z.infer<typeof CreateBookingSchema>;
-export type ValidateCouponInput  = z.infer<typeof ValidateCouponSchema>;
+export type SearchTransferInput = z.infer<typeof SearchTransferSchema>;
+export type CreateBookingInput  = z.infer<typeof CreateBookingSchema>;
+export type ValidateCouponInput = z.infer<typeof ValidateCouponSchema>;

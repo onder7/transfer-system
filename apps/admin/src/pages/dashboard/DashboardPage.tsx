@@ -49,7 +49,7 @@ function StatCard({ icon, label, value, sub }: { icon: string; label: string; va
 }
 
 export function DashboardPage() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['admin', 'dashboard'],
     queryFn:  () => api.get<DashboardData>('/admin/dashboard').then((r) => r.data),
     refetchInterval: 60_000,
@@ -59,7 +59,13 @@ export function DashboardPage() {
     <div className="flex h-64 items-center justify-center text-gray-400">Yükleniyor…</div>
   );
 
-  const d = data!;
+  if (isError || !data) return (
+    <div className="flex h-64 items-center justify-center text-red-400">
+      Dashboard verisi alınamadı. Backend bağlantısını kontrol edin.
+    </div>
+  );
+
+  const d = data;
 
   return (
     <div className="space-y-6">
@@ -112,7 +118,7 @@ export function DashboardPage() {
                     {Number(b.payment?.amount ?? b.price).toLocaleString('tr-TR')} ₺
                   </td>
                   <td className="px-5 py-3">
-                    <span className={STATUS_BADGE[b.status] ?? 'badge-gray'}>
+                    <span className={`badge ${STATUS_BADGE[b.status] ?? 'badge-gray'}`}>
                       {STATUS_TR[b.status] ?? b.status}
                     </span>
                   </td>

@@ -52,9 +52,14 @@ export async function createBooking(
     prisma.location.findUnique({ where: { id: data.toLocationId } }),
     prisma.vehicleClass.findUnique({ where: { id: data.vehicleClassId } }),
   ]);
-  if (!fromLoc)     throw new AppError(404, 'Kalkış noktası bulunamadı');
-  if (!toLoc)       throw new AppError(404, 'Varış noktası bulunamadı');
+  if (!fromLoc)      throw new AppError(404, 'Kalkış noktası bulunamadı');
+  if (!toLoc)        throw new AppError(404, 'Varış noktası bulunamadı');
   if (!vehicleClass) throw new AppError(404, 'Araç sınıfı bulunamadı');
+
+  const totalPassengers = data.adultCount + data.childCount;
+  if (totalPassengers > vehicleClass.capacity) {
+    throw new AppError(400, `Bu araç en fazla ${vehicleClass.capacity} kişi taşıyabilir`);
+  }
 
   // 3. Fiyat — backend'de tekrar hesapla, client'a güvenme
   const [priceRow, surcharges] = await Promise.all([
@@ -73,7 +78,11 @@ export async function createBooking(
 
   const transferDate = new Date(data.transferDate);
   const multiplier   = calcMultiplier(surcharges, transferDate);
-  let   price        = +( Number(priceRow.basePrice) * multiplier ).toFixed(2);
+  const baseUnit = Number(priceRow.basePrice) * multiplier;
+  // Paylaşımlı araç → kişi başı; özel → araç başı
+  let price = vehicleClass.isShared
+    ? +(baseUnit * totalPassengers).toFixed(2)
+    : +baseUnit.toFixed(2);
 
   if (data.returnFlight) {
     const disc = Number(priceRow.returnDiscount) / 100;
@@ -108,7 +117,8 @@ export async function createBooking(
         customToLng:     data.customToLng,
         vehicleClassId:  data.vehicleClassId,
         transferDate,
-        passengerCount:  data.passengerCount,
+        adultCount:      data.adultCount,
+        childCount:      data.childCount,
         flightNumber:    data.flightNumber,
         returnFlight:    data.returnFlight,
         returnFlightNo:  data.returnFlightNo,
@@ -145,6 +155,29 @@ export async function createBooking(
   return { ...result, isNew: true };
 }
 
+// ─── Müşteri rezervasyon listesi ─────────────────────────────────────────────
+
+export async function getMyBookings(userId: string) {
+  return prisma.booking.findMany({
+    where:   { customerId: userId },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      fromLocation: { select: { name: true } },
+      toLocation:   { select: { name: true } },
+      vehicleClass: { select: { name: true } },
+      payment:      { select: { status: true } },
+      assignment: {
+        select: {
+          status: true,
+          vehiclePlate: true,
+          driver: { select: { firstName: true, lastName: true } },
+        },
+      },
+      flightInfo: { select: { status: true, delayMinutes: true, estimatedAt: true } },
+    },
+  });
+}
+
 // ─── Rezervasyon detayı ───────────────────────────────────────────────────────
 
 export async function getBooking(id: string, userId?: string, isAdmin = false) {
@@ -156,6 +189,7 @@ export async function getBooking(id: string, userId?: string, isAdmin = false) {
       payment:      true,
       assignment:   { include: { driver: { select: { firstName: true, lastName: true, phone: true } } } },
       flightInfo:   true,
+      customer:     { select: { email: true } },
     },
   });
 

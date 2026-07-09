@@ -29,6 +29,26 @@ services:
       timeout:  5s
       retries:  5
 
+  # ── Nginx dev proxy ──────────────────────────────────────────────────────────
+  # Port 80  → web  (host:5173) + /api (host:5000)
+  # Port 8080 → admin (host:5174) + /api (host:5000)
+  #
+  # Gereksinim: backend + web + admin dev sunucuları önce ayakta olmalı
+  #   npm run dev:backend   (port 5000)
+  #   npm run dev:web       (port 5173)
+  #   npm run dev:admin     (port 5174)
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - ./nginx/dev.conf:/etc/nginx/conf.d/default.conf:ro
+    # Linux'ta host.docker.internal tanımlı değildir — bu satır ekler
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   postgres_data:
   redis_data:

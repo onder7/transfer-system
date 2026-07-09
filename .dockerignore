@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+
+# Node modules (Docker içinde yeniden yüklenir)
+node_modules
+*/node_modules
+**/node_modules
+
+# Build çıktıları (builder stage üretir)
+backend/dist
+apps/web/dist
+apps/admin/dist
+packages/*/dist
+
+# Ortam dosyaları (asla image'a girmesin)
+.env
+.env.*
+!.env.prod.example
+
+# Log ve geçici dosyalar
+*.log
+npm-debug.log*
+.DS_Store
+
+# Dev araçları
+.claude
+*.md

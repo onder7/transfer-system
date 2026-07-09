@@ -2,16 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "web-app",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "apps/web", "--port", "5173"],
+      "name": "web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:web"],
       "port": 5173
-    },
-    {
-      "name": "admin-app",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "apps/admin", "--port", "5174"],
-      "port": 5174
     }
   ]
 }

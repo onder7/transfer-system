@@ -21,3 +21,13 @@ apps/*/dist/
 
 # TypeScript cache
 *.tsbuildinfo
+
+# Sertifikalar ve private key'ler
+*.cer
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Claude session files
+.claude/launch.json

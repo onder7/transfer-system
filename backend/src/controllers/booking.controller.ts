@@ -2,6 +2,13 @@ import type { Request, Response, NextFunction } from 'express';
 import { CreateBookingSchema, CancelBookingSchema } from '@transfer/shared';
 import * as bookingService                         from '../services/booking.service.js';
 
+export async function getMyBookingsHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const bookings = await bookingService.getMyBookings(req.user!.sub);
+    res.json({ bookings });
+  } catch (e) { next(e); }
+}
+
 export async function createBookingHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const data   = CreateBookingSchema.parse(req.body);

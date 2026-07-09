@@ -340,8 +340,12 @@ export async function listIntegrations() {
 }
 
 export async function upsertIntegration(input: AdminUpsertIntegrationInput) {
-  const secretJson = input.secrets ? encrypt(JSON.stringify(input.secrets)) : undefined;
-  const configJson = input.config  ? JSON.stringify(input.config) : undefined;
+  const secretJson = input.secrets && Object.values(input.secrets).some(Boolean)
+    ? encrypt(JSON.stringify(input.secrets))
+    : undefined;
+  const configJson = input.config && Object.keys(input.config).length > 0
+    ? JSON.stringify(input.config)
+    : undefined;
 
   const existing = await prisma.integrationSetting.findUnique({ where: { service: input.service } });
 
@@ -349,22 +353,23 @@ export async function upsertIntegration(input: AdminUpsertIntegrationInput) {
     return prisma.integrationSetting.update({
       where: { service: input.service },
       data:  {
-        provider:   input.provider  ?? undefined,
-        isActive:   input.isActive  ?? undefined,
-        configJson: configJson      ?? undefined,
-        secretJson: secretJson      ?? undefined,
+        provider:   input.provider ?? undefined,
+        isActive:   input.isActive ?? undefined,
+        // undefined → mevcut değeri koru; yeni değer geldiyse güncelle
+        ...(configJson !== undefined && { configJson }),
+        ...(secretJson !== undefined && { secretJson }),
       },
       select: { id: true, service: true, provider: true, isActive: true, updatedAt: true },
     });
   }
 
   return prisma.integrationSetting.create({
-    data:   {
+    data: {
       service:    input.service,
       provider:   input.provider ?? '',
       isActive:   input.isActive ?? true,
-      configJson: configJson,
-      secretJson: secretJson,
+      configJson: configJson ?? '{}',      // required field — boş config için {}
+      secretJson: secretJson ?? '',        // required field — secrets yoksa boş
     },
     select: { id: true, service: true, provider: true, isActive: true, updatedAt: true },
   });

@@ -1,8 +1,13 @@
 {
   "name": "transfer-system",
   "private": true,
-  "workspaces": ["backend", "apps/*", "packages/*"],
+  "workspaces": [
+    "backend",
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
+    "setup":       "npm run build -w packages/shared",
     "dev:backend": "npm run dev -w backend",
     "dev:web":     "npm run dev -w apps/web",
     "dev:admin":   "npm run dev -w apps/admin",
@@ -11,5 +16,8 @@
   },
   "engines": {
     "node": ">=22"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.2"
   }
 }
