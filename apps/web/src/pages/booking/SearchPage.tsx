@@ -13,14 +13,19 @@ interface TransferResult {
   vehicleClass:     VehicleClass;
   price:            number;
   pricePerPerson:   number | null;
+  childUnitPrice:   number | null;
+  childDiscount:    number | null;
+  childLabel:       string | null;
   returnPrice:      number | null;
   surchargeApplied: boolean;
   multiplier:       number;
 }
 
-const FEATURE_ICONS: Record<string, string> = {
-  water: '💧', wifi: '📶', child_seat: '🪑', luggage: '🧳',
+// Eski key formatı için geriye dönük uyumluluk
+const LEGACY_FEATURE_LABELS: Record<string, string> = {
+  water: '💧 İçme Suyu', wifi: '📶 Wi-Fi', child_seat: '🪑 Çocuk Koltuğu', luggage: '🧳 Ekstra Bagaj',
 };
+const featureDisplay = (f: string) => LEGACY_FEATURE_LABELS[f] ?? f;
 
 export function SearchPage() {
   const { t, i18n } = useTranslation();
@@ -38,7 +43,7 @@ export function SearchPage() {
 
   const totalPax = Number(adults) + Number(kids);
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['transfers', from, to, date, adults, kids, ret],
     queryFn:  () =>
       api.get<{ results: TransferResult[] }>('/transfers/search', {
@@ -47,6 +52,7 @@ export function SearchPage() {
                   ...(flight ? { flightNumber: flight } : {}) },
       }).then((r) => r.data),
     enabled: !!(from && to && date),
+    retry: (failCount, err: any) => err?.response?.status !== 404 && failCount < 2,
   });
 
   const handleSelect = (vcId: string) => {
@@ -61,16 +67,34 @@ export function SearchPage() {
     </div>
   );
 
-  if (isError) return (
-    <div className="flex min-h-64 items-center justify-center">
-      <div className="text-center">
-        <p className="text-gray-500">{t('common.error')}</p>
-        <button onClick={() => window.location.reload()} className="btn btn-outline mt-3">
-          {t('common.retry')}
-        </button>
+  if (isError) {
+    const is404 = (error as any)?.response?.status === 404;
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-16 sm:px-6">
+        <div className="card p-10 text-center">
+          <p className="text-5xl">{is404 ? '🗺️' : '⚠️'}</p>
+          <h2 className="mt-4 text-lg font-semibold text-gray-900">
+            {is404 ? 'Bu güzergah için fiyat bulunamadı' : 'Bir hata oluştu'}
+          </h2>
+          <p className="mt-2 text-sm text-gray-500">
+            {is404
+              ? 'Seçtiğiniz güzergah henüz fiyatlandırılmamış. Lütfen farklı bir lokasyon seçin.'
+              : t('common.error')}
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <button onClick={() => navigate(-1)} className="btn btn-primary">
+              ← Geri Dön
+            </button>
+            {!is404 && (
+              <button onClick={() => window.location.reload()} className="btn btn-outline">
+                {t('common.retry')}
+              </button>
+            )}
+          </div>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   const results = data?.results ?? [];
 
@@ -115,7 +139,7 @@ export function SearchPage() {
                         key={f}
                         className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs text-gray-700"
                       >
-                        {FEATURE_ICONS[f] ?? ''} {t(`search.features.${f}`, { defaultValue: f })}
+                        {featureDisplay(f)}
                       </span>
                     ))}
                   </div>
@@ -129,11 +153,28 @@ export function SearchPage() {
                     {r.price.toLocaleString('tr-TR')} ₺
                   </p>
                   {r.vehicleClass.isShared && r.pricePerPerson !== null ? (
-                    <p className="text-xs text-gray-400">
-                      {r.pricePerPerson.toLocaleString('tr-TR')} ₺ × {totalPax} kişi
-                    </p>
+                    <div className="text-xs text-gray-400 space-y-0.5">
+                      <p>{r.pricePerPerson.toLocaleString('tr-TR')} ₺ × {adults} yetişkin</p>
+                      {Number(kids) > 0 && r.childUnitPrice !== null && (
+                        <p className="text-green-600">
+                          {r.childUnitPrice === 0
+                            ? `${kids} çocuk ücretsiz`
+                            : `${r.childUnitPrice.toLocaleString('tr-TR')} ₺ × ${kids} çocuk`}
+                          {r.childDiscount === 100 ? '' : ` (%${r.childDiscount} indirim)`}
+                        </p>
+                      )}
+                    </div>
                   ) : (
-                    <p className="text-xs text-gray-400">araç başı</p>
+                    <div className="text-xs text-gray-400 space-y-0.5">
+                      <p>araç başı</p>
+                      {Number(kids) > 0 && r.childLabel && (
+                        <p className="text-green-600">
+                          {r.childDiscount === 100
+                            ? `👶 ${r.childLabel} ücretsiz`
+                            : `👶 ${r.childLabel} %${r.childDiscount} indirim`}
+                        </p>
+                      )}
+                    </div>
                   )}
                   {r.returnPrice !== null && (
                     <p className="mt-0.5 text-sm text-gray-500">

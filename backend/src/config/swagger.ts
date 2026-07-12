@@ -200,6 +200,119 @@ export const swaggerSpec = swaggerJsdoc({
           responses: { 200: { description: 'Kaydedildi' } },
         },
       },
+
+      // ─── Driver ────────────────────────────────────────────────────────────
+
+      '/driver/assignments': {
+        get: {
+          tags: ['Driver'],
+          summary: 'Şoförün günlük transfer listesi',
+          security: [{ cookieAuth: [] }],
+          parameters: [
+            {
+              name: 'date', in: 'query', required: false,
+              schema: { type: 'string', format: 'date', example: '2026-08-15' },
+              description: 'Filtrelenecek tarih (YYYY-MM-DD). Boş bırakılırsa bugün.',
+            },
+          ],
+          responses: {
+            200: { description: 'Atama listesi' },
+            401: { description: 'Kimlik doğrulaması gerekli' },
+            403: { description: 'Yetersiz yetki (DRIVER rolü gerekli)' },
+          },
+        },
+      },
+
+      '/driver/assignments/{id}': {
+        get: {
+          tags: ['Driver'],
+          summary: 'Transfer ataması detayı',
+          security: [{ cookieAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'DriverAssignment ID' },
+          ],
+          responses: {
+            200: { description: 'Atama detayı (yolcu, lokasyon, uçuş, araç bilgileri)' },
+            403: { description: 'Bu atama size ait değil' },
+            404: { description: 'Atama bulunamadı' },
+          },
+        },
+      },
+
+      '/driver/assignments/{id}/status': {
+        patch: {
+          tags: ['Driver'],
+          summary: 'Transfer statüsü güncelle',
+          security: [{ cookieAuth: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'DriverAssignment ID' },
+          ],
+          requestBody: {
+            required: true,
+            content: { 'application/json': { schema: {
+              type: 'object',
+              required: ['status'],
+              properties: {
+                status: {
+                  type: 'string',
+                  enum: ['EN_ROUTE', 'PASSENGER_PICKED_UP', 'COMPLETED', 'NO_SHOW'],
+                  example: 'EN_ROUTE',
+                  description: 'Yeni atama durumu',
+                },
+              },
+            }}},
+          },
+          responses: {
+            200: { description: 'Statü güncellendi' },
+            400: { description: 'Geçersiz statü geçişi' },
+            403: { description: 'Bu atama size ait değil' },
+          },
+        },
+      },
+
+      '/driver/flight/{bookingId}': {
+        get: {
+          tags: ['Driver'],
+          summary: 'Rezervasyona ait anlık uçuş bilgisi',
+          security: [{ cookieAuth: [] }],
+          parameters: [
+            { name: 'bookingId', in: 'path', required: true, schema: { type: 'string' }, description: 'Booking ID' },
+          ],
+          responses: {
+            200: { description: 'Uçuş takip verisi (kapı, terminal, gecikme durumu)' },
+            404: { description: 'Uçuş bilgisi bulunamadı' },
+          },
+        },
+      },
+
+      '/driver/assign/{bookingId}': {
+        post: {
+          tags: ['Driver'],
+          summary: 'Rezervasyona şoför ve araç ata (Admin / Operator)',
+          security: [{ cookieAuth: [] }],
+          parameters: [
+            { name: 'bookingId', in: 'path', required: true, schema: { type: 'string' }, description: 'Booking ID' },
+          ],
+          requestBody: {
+            required: true,
+            content: { 'application/json': { schema: {
+              type: 'object',
+              required: ['driverId', 'vehicleId'],
+              properties: {
+                driverId:  { type: 'string', example: 'usr_abc123', description: 'Atanacak şoför kullanıcı ID' },
+                vehicleId: { type: 'string', example: 'veh_xyz789', description: 'Atanacak araç ID' },
+                notes:     { type: 'string', example: 'Terminal 2den alınacak', description: 'Şoför için ek not' },
+              },
+            }}},
+          },
+          responses: {
+            201: { description: 'Atama oluşturuldu' },
+            400: { description: 'Şoför veya araç müsait değil' },
+            403: { description: 'Yetersiz yetki (ADMIN veya OPERATOR gerekli)' },
+            404: { description: 'Rezervasyon bulunamadı' },
+          },
+        },
+      },
     },
   },
   apis: [],

@@ -5,8 +5,8 @@ import { decrypt } from '../utils/crypto.js';
 const CACHE_TTL = 300; // 5 dakika
 
 export type ServiceKey =
-  | 'paytr' | 'flight' | 'map'
-  | 'sms'   | 'whatsapp' | 'smtp' | 'exchange';
+  | 'paytr' | 'bank_transfer' | 'flight' | 'map'
+  | 'sms'   | 'whatsapp' | 'smtp' | 'exchange' | 'aeroDataBox' | 'netgsm' | 'osm' | 'exchangeRate';
 
 interface IntegrationConfig {
   provider: string;
@@ -25,8 +25,8 @@ export async function getIntegration(service: ServiceKey): Promise<IntegrationCo
 
   const result: IntegrationConfig = {
     provider: row.provider,
-    config:   JSON.parse(row.configJson) as Record<string, unknown>,
-    secrets:  JSON.parse(decrypt(row.secretJson)) as Record<string, string>,
+    config:   row.configJson ? JSON.parse(row.configJson) as Record<string, unknown> : {},
+    secrets:  row.secretJson ? JSON.parse(decrypt(row.secretJson)) as Record<string, string> : {},
     isActive: row.isActive,
   };
 

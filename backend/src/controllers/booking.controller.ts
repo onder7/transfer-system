@@ -4,7 +4,7 @@ import * as bookingService                         from '../services/booking.ser
 
 export async function getMyBookingsHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const bookings = await bookingService.getMyBookings(req.user!.sub);
+    const bookings = await bookingService.getMyBookings(req.user!.sub, req.user!.email);
     res.json({ bookings });
   } catch (e) { next(e); }
 }

@@ -9,3 +9,10 @@ export async function searchTransfersHandler(req: Request, res: Response, next: 
     res.json({ results });
   } catch (e) { next(e); }
 }
+
+export async function listFleetHandler(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const fleet = await transferService.listFleet();
+    res.json({ fleet });
+  } catch (e) { next(e); }
+}

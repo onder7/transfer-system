@@ -12,12 +12,13 @@ export type AdminUpdateBookingInput = z.infer<typeof AdminUpdateBookingSchema>;
 // ─── Location ─────────────────────────────────────────────────────────────────
 
 export const AdminCreateLocationSchema = z.object({
-  name:    z.string().min(2),
-  nameEn:  z.string().min(2),
-  type:    z.enum(['airport', 'hotel', 'region', 'port', 'city']),
-  lat:     z.number(),
-  lng:     z.number(),
-  address: z.string().optional(),
+  name:     z.string().min(2),
+  nameEn:   z.string().optional().nullable(),
+  type:     z.enum(['airport', 'hotel', 'region', 'port', 'city']),
+  lat:      z.number().nullable().optional(),
+  lng:      z.number().nullable().optional(),
+  address:  z.string().optional().nullable(),
+  isActive: z.boolean().optional().default(true),
 });
 export type AdminCreateLocationInput = z.infer<typeof AdminCreateLocationSchema>;
 
@@ -27,12 +28,14 @@ export type AdminUpdateLocationInput = z.infer<typeof AdminUpdateLocationSchema>
 // ─── VehicleClass ─────────────────────────────────────────────────────────────
 
 export const AdminCreateVehicleClassSchema = z.object({
-  name:        z.string().min(2),
-  nameEn:      z.string().min(2),
-  capacity:    z.number().int().min(1).max(50),
-  features:    z.array(z.string()).default([]),
-  imageUrl:    z.string().url().optional(),
-  description: z.string().optional(),
+  name:            z.string().min(2),
+  nameEn:          z.string().min(2).optional(),
+  capacity:        z.number().int().min(1).max(50),
+  luggageCapacity: z.number().int().min(0).default(2),
+  isShared:        z.boolean().default(false),
+  features:        z.array(z.string()).default([]),
+  imageUrl:        z.string().url().optional().nullable(),
+  isActive:        z.boolean().default(true),
 });
 export type AdminCreateVehicleClassInput = z.infer<typeof AdminCreateVehicleClassSchema>;
 
@@ -42,8 +45,8 @@ export const AdminUpdatePriceMatrixSchema = z.object({
   fromLocationId:  z.string().min(1),
   toLocationId:    z.string().min(1),
   vehicleClassId:  z.string().min(1),
-  basePrice:       z.number().positive(),
-  returnDiscount:  z.number().min(0).max(100).default(0),
+  basePrice:       z.coerce.number().positive(),
+  returnDiscount:  z.coerce.number().min(0).max(100).default(0),
   isActive:        z.boolean().default(true),
 });
 export type AdminUpdatePriceMatrixInput = z.infer<typeof AdminUpdatePriceMatrixSchema>;
@@ -52,11 +55,12 @@ export type AdminUpdatePriceMatrixInput = z.infer<typeof AdminUpdatePriceMatrixS
 
 export const AdminCreateSurchargeSchema = z.object({
   name:       z.string().min(2),
-  multiplier: z.number().min(1).max(5),
-  startHour:  z.number().int().min(0).max(23).optional(),
-  endHour:    z.number().int().min(0).max(23).optional(),
-  startDate:  z.coerce.date().optional(),
-  endDate:    z.coerce.date().optional(),
+  multiplier: z.coerce.number().min(0.1).max(10),
+  startHour:  z.coerce.number().int().min(0).max(23).optional().nullable(),
+  endHour:    z.coerce.number().int().min(0).max(23).optional().nullable(),
+  startDate:  z.coerce.date().optional().nullable(),
+  endDate:    z.coerce.date().optional().nullable(),
+  isActive:   z.boolean().default(true),
 });
 export type AdminCreateSurchargeInput = z.infer<typeof AdminCreateSurchargeSchema>;
 
@@ -80,6 +84,14 @@ export const AdminSetActiveSchema = z.object({
   isActive: z.boolean(),
 });
 
+export const AdminUpdateUserProfileSchema = z.object({
+  firstName: z.string().min(1).optional(),
+  lastName:  z.string().min(1).optional(),
+  phone:     z.string().optional().nullable(),
+  email:     z.string().email().optional(),
+});
+export type AdminUpdateUserProfileInput = z.infer<typeof AdminUpdateUserProfileSchema>;
+
 // ─── Coupon ───────────────────────────────────────────────────────────────────
 
 export const AdminCreateCouponSchema = z.object({
@@ -92,6 +104,16 @@ export const AdminCreateCouponSchema = z.object({
   isActive:     z.boolean().default(true),
 });
 export type AdminCreateCouponInput = z.infer<typeof AdminCreateCouponSchema>;
+
+// ─── ChildPriceRule ───────────────────────────────────────────────────────────
+
+export const AdminCreateChildPriceRuleSchema = z.object({
+  label:           z.string().min(2),
+  maxAge:          z.coerce.number().int().min(0).max(17),
+  discountPercent: z.coerce.number().int().min(0).max(100),
+  isActive:        z.boolean().default(true),
+});
+export type AdminCreateChildPriceRuleInput = z.infer<typeof AdminCreateChildPriceRuleSchema>;
 
 // ─── Integration ──────────────────────────────────────────────────────────────
 

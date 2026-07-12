@@ -12,15 +12,24 @@ const PAYTR_API = 'https://www.paytr.com/odeme/api/v1';
 
 async function getPayTRConfig() {
   const cfg = await getIntegration('paytr');
-  if (!cfg) throw new AppError(503, 'Ödeme servisi henüz yapılandırılmamış');
+  if (!cfg) throw new AppError(503, 'Ödeme servisi henüz yapılandırılmamış. Lütfen admin panelinden PayTR entegrasyonunu yapılandırın.');
+
+  const merchantId   = cfg.secrets.merchantId   as string | undefined;
+  const merchantKey  = cfg.secrets.merchantKey  as string | undefined;
+  const merchantSalt = cfg.secrets.merchantSalt as string | undefined;
+
+  if (!merchantId || !merchantKey || !merchantSalt) {
+    throw new AppError(503, 'PayTR kimlik bilgileri eksik. Lütfen admin panelinden Entegrasyonlar → PayTR ayarlarını tamamlayın.');
+  }
+
   return {
-    merchantId:   cfg.secrets.merchantId,
-    merchantKey:  cfg.secrets.merchantKey,
-    merchantSalt: cfg.secrets.merchantSalt,
-    callbackUrl:  (cfg.config.callbackUrl as string) ?? '',
-    okUrl:        (cfg.config.okUrl as string) ?? '',
-    failUrl:      (cfg.config.failUrl as string) ?? '',
-    testMode:     (cfg.config.testMode as boolean) ? '1' : '0',
+    merchantId,
+    merchantKey,
+    merchantSalt,
+    callbackUrl: (cfg.config.callbackUrl as string) ?? '',
+    okUrl:       (cfg.config.okUrl as string) ?? '',
+    failUrl:     (cfg.config.failUrl as string) ?? '',
+    testMode:    (cfg.config.testMode as boolean) ? '1' : '0',
   };
 }
 
@@ -88,11 +97,22 @@ export async function createIframeToken(bookingId: string, userIp: string) {
     test_mode:          cfg.testMode,
   });
 
-  const { data } = await axios.post<{ status: string; token?: string; reason?: string }>(
-    PAYTR_API,
-    params.toString(),
-    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
-  );
+  let data: { status: string; token?: string; reason?: string };
+  try {
+    const resp = await axios.post<typeof data>(
+      PAYTR_API,
+      params.toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } },
+    );
+    data = resp.data;
+  } catch (axErr: any) {
+    const status = axErr?.response?.status;
+    const msg    = status === 401
+      ? 'PayTR kimlik bilgileri geçersiz. Lütfen merchant_id, merchant_key ve merchant_salt değerlerini kontrol edin.'
+      : `PayTR bağlantı hatası (HTTP ${status ?? 'timeout'})`;
+    logger.error({ axErr }, 'PayTR API çağrısı başarısız');
+    throw new AppError(502, msg);
+  }
 
   if (data.status !== 'success' || !data.token) {
     logger.error({ reason: data.reason }, 'PayTR token alınamadı');
@@ -164,4 +184,48 @@ export async function processCallback(body: Record<string, string>) {
   }
 
   return 'OK';
+}
+
+// ─── Banka bilgileri (public) ────────────────────────────────────────────────
+
+export async function getBankInfo() {
+  const cfg = await getIntegration('bank_transfer');
+  if (!cfg || !cfg.isActive) return null;
+  return cfg.config as {
+    bankName?: string; accountName?: string; iban?: string; branchCode?: string; description?: string;
+  };
+}
+
+// ─── Havale/EFT ──────────────────────────────────────────────────────────────
+
+export async function initBankTransfer(bookingId: string) {
+  const payment = await prisma.payment.findUnique({ where: { bookingId } });
+  if (!payment) throw new AppError(404, 'Ödeme kaydı bulunamadı');
+  if (payment.status === 'PAID') throw new AppError(400, 'Bu rezervasyon zaten ödendi');
+
+  await prisma.payment.update({
+    where: { id: payment.id },
+    data:  { method: 'BANK_TRANSFER' },
+  });
+
+  const bankInfo = await getBankInfo();
+  return { bookingId, bankInfo };
+}
+
+// ─── Araçta ödeme ────────────────────────────────────────────────────────────
+
+export async function initCashPayment(bookingId: string) {
+  const payment = await prisma.payment.findUnique({ where: { bookingId } });
+  if (!payment) throw new AppError(404, 'Ödeme kaydı bulunamadı');
+  if (payment.status === 'PAID') throw new AppError(400, 'Bu rezervasyon zaten ödendi');
+
+  await prisma.payment.update({
+    where: { id: payment.id },
+    data:  { method: 'CASH_ON_DELIVERY' },
+  });
+
+  // PENDING kalır — admin panelinden X dakika içinde onaylanmalı
+  // Onaylanmazsa scheduler otomatik iptal eder (SystemSetting: cash_confirm_timeout_min)
+
+  return { bookingId };
 }

@@ -2,7 +2,7 @@ import { prisma }                        from '../config/database.js';
 import { redis }                         from '../config/redis.js';
 import { AppError }                      from '../middlewares/error.middleware.js';
 import type { SearchTransferInput }      from '@transfer/shared';
-import type { PriceSurcharge }           from '@prisma/client';
+import type { PriceSurcharge, ChildPriceRule } from '@prisma/client';
 
 const CACHE_TTL = 600; // 10 dakika
 
@@ -28,6 +28,20 @@ function calcMultiplier(surcharges: PriceSurcharge[], date: Date): number {
     }
   }
   return multiplier;
+}
+
+// ─── Filo (araç sınıfları) — fiyatsız, public listeleme ──────────────────────
+
+export async function listFleet() {
+  return prisma.vehicleClass.findMany({
+    where:   { isActive: true },
+    select: {
+      id: true, name: true, nameEn: true,
+      capacity: true, luggageCapacity: true, isShared: true,
+      features: true, imageUrl: true,
+    },
+    orderBy: { capacity: 'asc' },
+  });
 }
 
 // ─── Transfer arama ───────────────────────────────────────────────────────────
@@ -72,18 +86,47 @@ export async function searchTransfers(input: SearchTransferInput) {
     await redis.setex(cacheKey, CACHE_TTL, JSON.stringify(prices));
   }
 
-  const surcharges   = await prisma.priceSurcharge.findMany({ where: { isActive: true } });
+  const [surcharges, childRules] = await Promise.all([
+    prisma.priceSurcharge.findMany({ where: { isActive: true } }),
+    prisma.childPriceRule.findMany({ where: { isActive: true }, orderBy: { maxAge: 'asc' } }),
+  ]);
   const transferDate = new Date(input.transferDate);
   const multiplier   = calcMultiplier(surcharges, transferDate);
 
+  // En düşük indirim yüzdesine sahip aktif kuralı seç (en az cömert kural geçerli)
+  // Genellikle tek kural olur; birden fazlaysa en düşük indirimi al
+  const childRule    = childRules.length > 0 ? childRules[0] : null;
+  const childDisc    = childRule ? childRule.discountPercent / 100 : 0; // 1.0 = ücretsiz
+  const adultCount   = input.adultCount;
+  const childCount   = input.childCount;
+
   const results: TransferResult[] = prices
-    .filter((p) => p.vehicleClass.capacity >= totalPassengers) // kapasite filtresi
+    .filter((p) => p.vehicleClass.capacity >= totalPassengers)
     .map((p) => {
       const basePerUnit = Number(p.basePrice) * multiplier;
-      // Paylaşımlı araç → kişi başı; özel → araç başı
-      const unitPrice   = p.vehicleClass.isShared
-        ? +(basePerUnit * totalPassengers).toFixed(2)
-        : +basePerUnit.toFixed(2);
+
+      let unitPrice: number;
+      let pricePerPerson: number | null = null;
+      let childUnitPrice: number | null = null;
+
+      if (p.vehicleClass.isShared) {
+        // Paylaşımlı: yetişkin tam fiyat, çocuk indirimli
+        const adultTotal = basePerUnit * adultCount;
+        const childTotal = childCount > 0 && childRule
+          ? basePerUnit * (1 - childDisc) * childCount
+          : basePerUnit * childCount;
+        unitPrice     = +(adultTotal + childTotal).toFixed(2);
+        pricePerPerson = +basePerUnit.toFixed(2);
+        childUnitPrice = childCount > 0 && childRule
+          ? +( basePerUnit * (1 - childDisc) ).toFixed(2)
+          : null;
+      } else {
+        // Özel: araç başı sabit fiyat — çocuk ek ücret oluşturmaz
+        unitPrice      = +basePerUnit.toFixed(2);
+        childUnitPrice = childCount > 0 && childRule
+          ? +(basePerUnit * (1 - childDisc)).toFixed(2) // informatif — fiyata eklenmez
+          : null;
+      }
 
       const returnDisc  = Number(p.returnDiscount) / 100;
       const returnPrice = input.returnFlight
@@ -93,7 +136,10 @@ export async function searchTransfers(input: SearchTransferInput) {
       return {
         vehicleClass:     p.vehicleClass,
         price:            unitPrice,
-        pricePerPerson:   p.vehicleClass.isShared ? +basePerUnit.toFixed(2) : null,
+        pricePerPerson,
+        childUnitPrice,
+        childDiscount:    childRule ? childRule.discountPercent : null,
+        childLabel:       childRule ? childRule.label : null,
         returnPrice,
         currency:         'TRY' as const,
         surchargeApplied: multiplier > 1,
@@ -112,7 +158,10 @@ export interface TransferResult {
     features: string[]; imageUrl: string | null;
   };
   price:            number;
-  pricePerPerson:   number | null; // isShared=true için birim fiyat
+  pricePerPerson:   number | null;  // isShared=true için yetişkin birim fiyat
+  childUnitPrice:   number | null;  // çocuk birim fiyatı (indirimli)
+  childDiscount:    number | null;  // indirim yüzdesi, ör 100 = ücretsiz
+  childLabel:       string | null;  // "Çocuk (0-12 yaş)"
   returnPrice:      number | null;
   currency:         'TRY';
   surchargeApplied: boolean;

@@ -13,12 +13,40 @@ export async function checkoutHandler(req: Request, res: Response, next: NextFun
   } catch (e) { next(e); }
 }
 
+// PaymentPage için: POST /payments/iframe/:bookingId → { iframeToken }
+export async function iframeTokenHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const bookingId = req.params.bookingId as string;
+    const userIp    = (req.ip ?? '127.0.0.1').replace('::ffff:', '');
+    const { token } = await paymentService.createIframeToken(bookingId, userIp);
+    res.json({ iframeToken: token });
+  } catch (e) { next(e); }
+}
+
 // PayTR'den gelen server-to-server callback — ham POST, JSON değil
 export async function callbackHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const body   = req.body as Record<string, string>;
     const result = await paymentService.processCallback(body);
     res.set('Content-Type', 'text/plain').send(result); // PayTR "OK" bekler
+  } catch (e) { next(e); }
+}
+
+export async function bankInfoHandler(_req: Request, res: Response, next: NextFunction) {
+  try { res.json({ bankInfo: await paymentService.getBankInfo() }); } catch (e) { next(e); }
+}
+
+export async function bankTransferHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await paymentService.initBankTransfer(req.params.bookingId as string);
+    res.json(result);
+  } catch (e) { next(e); }
+}
+
+export async function cashPaymentHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await paymentService.initCashPayment(req.params.bookingId as string);
+    res.json(result);
   } catch (e) { next(e); }
 }
 

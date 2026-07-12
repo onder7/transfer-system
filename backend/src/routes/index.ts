@@ -12,6 +12,19 @@ import { adminRouter }    from './admin.route.js';
 
 export const router = Router();
 
+router.get('/time', (_req, res) => {
+  res.json({ iso: new Date().toISOString() });
+});
+
+// Public sistem ayarları — yalnızca frontend'in ihtiyaç duyduğu güvenli parametreler
+router.get('/settings', async (_req, res) => {
+  const rows = await prisma.systemSetting.findMany({
+    where: { key: { in: ['min_advance_minutes', 'timezone', 'hero_image_url'] } },
+    select: { key: true, value: true },
+  });
+  res.json({ settings: rows });
+});
+
 router.get('/health', async (_req, res) => {
   const checks: Record<string, 'ok' | 'error'> = {};
   let degraded = false;

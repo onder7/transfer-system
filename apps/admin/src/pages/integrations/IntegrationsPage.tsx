@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
@@ -9,15 +9,71 @@ interface Integration {
   updatedAt: string;
 }
 
-const SERVICE_LABELS: Record<string, { label: string; icon: string; secretFields: string[]; configFields: string[] }> = {
-  paytr:         { label: 'PayTR Ödeme',      icon: '💳', secretFields: ['merchantKey', 'merchantSalt'], configFields: ['merchantId'] },
+const SERVICE_LABELS: Record<string, { label: string; icon: string; secretFields: string[]; configFields: string[]; configHints?: Record<string, string> }> = {
+  paytr:         { label: 'PayTR Ödeme',       icon: '💳', secretFields: ['merchantKey', 'merchantSalt'], configFields: ['merchantId', 'callbackUrl', 'okUrl', 'failUrl', 'testMode'] },
+  bank_transfer: { label: 'Havale / EFT',      icon: '🏦', secretFields: [], configFields: ['bankName', 'accountName', 'iban', 'branchCode', 'description'],
+    configHints: { iban: 'TR00 0000 0000 0000 0000 0000 00', branchCode: 'Şube kodu (opsiyonel)', description: 'Müşteriye gösterilecek ek not' } },
   aeroDataBox:   { label: 'AeroDataBox (Uçuş)', icon: '✈️', secretFields: ['rapidApiKey'], configFields: [] },
-  netgsm:        { label: 'Netgsm (SMS)',       icon: '📱', secretFields: ['apiKey', 'apiSecret'], configFields: ['sender'] },
-  whatsapp:      { label: 'WhatsApp (Meta)',    icon: '💬', secretFields: ['accessToken'], configFields: ['phoneNumberId', 'waBaId'] },
-  smtp:          { label: 'E-posta (SMTP)',     icon: '📧', secretFields: ['password'], configFields: ['host', 'port', 'user', 'from'] },
-  exchangeRate:  { label: 'Döviz Kuru API',    icon: '💱', secretFields: ['apiKey'], configFields: ['baseCurrency'] },
-  osm:           { label: 'Harita (OSM/OSRM)', icon: '🗺️', secretFields: [], configFields: ['photonUrl', 'osrmUrl', 'nominatimUrl'] },
+  netgsm:        { label: 'Netgsm (SMS)',        icon: '📱', secretFields: ['apiKey', 'apiSecret'], configFields: ['sender'] },
+  whatsapp:      { label: 'WhatsApp (Meta)',     icon: '💬', secretFields: ['accessToken'], configFields: ['phoneNumberId', 'waBaId'] },
+  smtp:          { label: 'E-posta (SMTP)',      icon: '📧', secretFields: ['password'], configFields: ['host', 'port', 'user', 'from'] },
+  exchangeRate:  { label: 'Döviz Kuru API',     icon: '💱', secretFields: ['apiKey'], configFields: ['baseCurrency'] },
+  osm:           { label: 'Harita (OSM/OSRM)',  icon: '🗺️', secretFields: [], configFields: ['photonUrl', 'osrmUrl', 'nominatimUrl'] },
 };
+
+// ─── SMTP Test Bölümü ─────────────────────────────────────────────────────────
+
+function SmtpTestSection() {
+  const [email,  setEmail]  = useState('');
+  const [result, setResult] = useState<{ ok: boolean; msg: string } | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const mut = useMutation({
+    mutationFn: (to: string) =>
+      api.post<{ ok: boolean }>('/admin/integrations/smtp/test', { to }).then((r) => r.data),
+    onSuccess: () => setResult({ ok: true,  msg: 'Test emaili başarıyla gönderildi!' }),
+    onError:   (e: any) => setResult({ ok: false, msg: e?.response?.data?.error ?? e?.message ?? 'Gönderilemedi' }),
+  });
+
+  function handleSend() {
+    if (!email) { inputRef.current?.focus(); return; }
+    setResult(null);
+    mut.mutate(email);
+  }
+
+  return (
+    <div className="mt-3 border-t border-gray-100 pt-3">
+      <p className="text-xs font-medium text-gray-500 mb-2">SMTP Bağlantı Testi</p>
+      <div className="flex gap-2">
+        <input
+          ref={inputRef}
+          type="email"
+          className="input py-1.5 text-sm flex-1 min-w-0"
+          placeholder="Test emaili gönderilecek adres…"
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); setResult(null); }}
+          onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+        />
+        <button
+          className="btn btn-outline py-1.5 px-3 text-xs whitespace-nowrap"
+          disabled={!email || mut.isPending}
+          onClick={handleSend}
+        >
+          {mut.isPending ? 'Gönderiliyor…' : '📧 Test Gönder'}
+        </button>
+      </div>
+      {result && (
+        <p className={`mt-2 text-xs rounded-lg px-3 py-1.5 ${
+          result.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+        }`}>
+          {result.ok ? '✅' : '❌'} {result.msg}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Entegrasyon Kartı ────────────────────────────────────────────────────────
 
 function IntegrationCard({ item, onEdit }: { item: Integration; onEdit: () => void }) {
   const meta = SERVICE_LABELS[item.service] ?? { label: item.service, icon: '🔌', secretFields: [], configFields: [] };
@@ -63,6 +119,8 @@ function IntegrationCard({ item, onEdit }: { item: Integration; onEdit: () => vo
         </div>
       )}
 
+      {item.service === 'smtp' && item.isActive && <SmtpTestSection />}
+
       <p className="mt-2 text-xs text-gray-400">
         Son güncelleme: {new Date(item.updatedAt).toLocaleString('tr-TR')}
       </p>
@@ -72,12 +130,11 @@ function IntegrationCard({ item, onEdit }: { item: Integration; onEdit: () => vo
 
 function EditModal({ item, onClose }: { item: Integration | { service: string }; onClose: () => void }) {
   const qc  = useQueryClient();
-  const isNew = !('id' in item);
   const svc = item.service;
   const meta = SERVICE_LABELS[svc] ?? { secretFields: [], configFields: [] };
 
   const [isActive, setIsActive] = useState('isActive' in item ? item.isActive : true);
-  const [provider, setProvider] = useState('provider' in item ? item.provider : svc);
+  const [provider] = useState('provider' in item ? item.provider : svc);
   const [config,   setConfig]   = useState<Record<string, string>>(() => {
     if ('configJson' in item && item.configJson) {
       return Object.fromEntries(Object.entries(item.configJson).map(([k, v]) => [k, String(v)]));
@@ -119,6 +176,7 @@ function EditModal({ item, onClose }: { item: Integration | { service: string };
             <div key={field}>
               <label className="label">{field}</label>
               <input className="input" value={config[field] ?? ''}
+                placeholder={(meta as any).configHints?.[field] ?? ''}
                 onChange={(e) => setConfig((c) => ({ ...c, [field]: e.target.value }))} />
             </div>
           ))}

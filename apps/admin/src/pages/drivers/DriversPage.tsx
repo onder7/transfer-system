@@ -60,6 +60,60 @@ function CreateDriverModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+function EditDriverModal({ driver, onClose }: { driver: Driver; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState({
+    firstName: driver.firstName,
+    lastName:  driver.lastName,
+    email:     driver.email,
+    phone:     driver.phone ?? '',
+  });
+  const [error, setError] = useState('');
+
+  const mut = useMutation({
+    mutationFn: () => api.patch(`/admin/users/${driver.id}/profile`, {
+      firstName: form.firstName,
+      lastName:  form.lastName,
+      email:     form.email,
+      phone:     form.phone || null,
+    }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'drivers'] }); onClose(); },
+    onError: (e: any) => setError(e.response?.data?.error ?? 'Kayıt hatası'),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <div className="card w-full max-w-md p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">Şoför Düzenle</h2>
+        <div className="space-y-3">
+          {[
+            { key: 'firstName', label: 'Ad' },
+            { key: 'lastName',  label: 'Soyad' },
+            { key: 'email',     label: 'E-posta', type: 'email' },
+            { key: 'phone',     label: 'Telefon', type: 'tel' },
+          ].map(({ key, label, type = 'text' }) => (
+            <div key={key}>
+              <label className="label">{label}</label>
+              <input
+                type={type} className="input"
+                value={(form as any)[key]}
+                onChange={(e) => setForm((f) => ({ ...f, [key]: e.target.value }))}
+              />
+            </div>
+          ))}
+          {error && <p className="text-sm text-red-600">{error}</p>}
+        </div>
+        <div className="mt-5 flex justify-end gap-2">
+          <button className="btn btn-outline" onClick={onClose}>İptal</button>
+          <button className="btn btn-primary" onClick={() => mut.mutate()} disabled={mut.isPending}>
+            {mut.isPending ? 'Kaydediliyor…' : 'Kaydet'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AssignDriverModal({ booking, drivers, vehicleClasses, onClose }: {
   booking: Booking; drivers: Driver[]; vehicleClasses: VehicleClass[]; onClose: () => void;
 }) {
@@ -123,6 +177,7 @@ function AssignDriverModal({ booking, drivers, vehicleClasses, onClose }: {
 export function DriversPage() {
   const qc = useQueryClient();
   const [showCreate, setShowCreate]       = useState(false);
+  const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [assignBooking, setAssignBooking] = useState<Booking | null>(null);
 
   const { data: driversData } = useQuery({
@@ -165,8 +220,8 @@ export function DriversPage() {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-gray-100 bg-gray-50 text-left text-xs text-gray-500">
-              {['Ad Soyad', 'E-posta', 'Telefon', 'Durum', 'İşlem'].map((h) => (
-                <th key={h} className="px-4 py-3 font-medium">{h}</th>
+              {['Ad Soyad', 'E-posta', 'Telefon', 'Durum', 'İşlem'].map((h, i) => (
+                <th key={i} className="px-4 py-3 font-medium">{h}</th>
               ))}
             </tr>
           </thead>
@@ -184,12 +239,20 @@ export function DriversPage() {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <button
-                    onClick={() => toggleActive.mutate({ id: d.id, isActive: !d.isActive })}
-                    className="text-xs text-brand-600 hover:underline"
-                  >
-                    {d.isActive ? 'Deaktive et' : 'Aktive et'}
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setEditingDriver(d)}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      Düzenle
+                    </button>
+                    <button
+                      onClick={() => toggleActive.mutate({ id: d.id, isActive: !d.isActive })}
+                      className={`text-xs hover:underline ${d.isActive ? 'text-red-500' : 'text-green-600'}`}
+                    >
+                      {d.isActive ? 'Deaktive et' : 'Aktive et'}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -237,7 +300,8 @@ export function DriversPage() {
         </div>
       )}
 
-      {showCreate && <CreateDriverModal onClose={() => setShowCreate(false)} />}
+      {showCreate    && <CreateDriverModal onClose={() => setShowCreate(false)} />}
+      {editingDriver && <EditDriverModal driver={editingDriver} onClose={() => setEditingDriver(null)} />}
       {assignBooking && (
         <AssignDriverModal
           booking={assignBooking}

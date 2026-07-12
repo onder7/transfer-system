@@ -7,3 +7,10 @@ export async function listLocationsHandler(req: Request, res: Response, next: Ne
     res.json({ locations });
   } catch (e) { next(e); }
 }
+
+export async function listRoutesHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const routes = await locationService.getAvailableRoutes();
+    res.json({ routes });
+  } catch (e) { next(e); }
+}

@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { useForm } from 'react-hook-form';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/store/auth.store';
-import { v4 as uuidv4 } from 'uuid';
 
 interface BookingForm {
   guestName:     string;
@@ -37,13 +36,14 @@ export function BookingPage() {
 
   const { register, handleSubmit, getValues, formState: { errors } } = useForm<BookingForm>();
 
-  const fromId  = params.get('fromLocationId')  ?? '';
-  const toId    = params.get('toLocationId')    ?? '';
-  const vcId    = params.get('vehicleClassId')  ?? '';
-  const date    = params.get('transferDate')    ?? '';
-  const pax     = params.get('passengerCount')  ?? '2';
-  const retFlt  = params.get('returnFlight')    ?? 'false';
-  const fltNo   = params.get('flightNumber')    ?? '';
+  const fromId   = params.get('fromLocationId')  ?? '';
+  const toId     = params.get('toLocationId')    ?? '';
+  const vcId     = params.get('vehicleClassId')  ?? '';
+  const date     = params.get('transferDate')    ?? '';
+  const adults   = Number(params.get('adultCount')  ?? '1');
+  const children = Number(params.get('childCount')  ?? '0');
+  const retFlt   = params.get('returnFlight')    ?? 'false';
+  const fltNo    = params.get('flightNumber')    ?? '';
 
   const applyCoupon = async () => {
     const code = getValues('couponCode');
@@ -68,7 +68,8 @@ export function BookingPage() {
         toLocationId:    toId,
         vehicleClassId:  vcId,
         transferDate:    date,
-        passengerCount:  Number(pax),
+        adultCount:      adults,
+        childCount:      children,
         returnFlight:    retFlt === 'true',
         flightNumber:    fltNo || undefined,
         guestName:       user ? `${user.firstName} ${user.lastName}` : form.guestName,
@@ -91,7 +92,15 @@ export function BookingPage() {
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6">
       <h1 className="text-2xl font-bold text-gray-900">{t('booking.title')}</h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="mt-6 space-y-5">
+      {/* Yolcu özeti */}
+      <div className="mt-4 flex flex-wrap gap-3 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+        <span>👤 <strong>{adults}</strong> yetişkin</span>
+        {children > 0 && <span>🧒 <strong>{children}</strong> çocuk</span>}
+        {retFlt === 'true' && <span>🔄 Gidiş-dönüş</span>}
+        {fltNo && <span>✈️ {fltNo}</span>}
+      </div>
+
+      <form onSubmit={handleSubmit(onSubmit)} className="mt-4 space-y-5">
         {/* Misafir bilgileri — sadece giriş yapmamışsa */}
         {!user && (
           <div className="card p-5 space-y-4">

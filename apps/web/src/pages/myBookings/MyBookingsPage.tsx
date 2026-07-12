@@ -132,8 +132,10 @@ export function MyBookingsPage() {
   }
 
   const { data, isLoading } = useQuery({
-    queryKey: ['my-bookings'],
-    queryFn:  () => api.get<{ bookings: Booking[] }>('/bookings/my').then((r) => r.data),
+    queryKey:                    ['my-bookings'],
+    queryFn:                     () => api.get<{ bookings: Booking[] }>('/bookings/my').then((r) => r.data),
+    refetchInterval:             30_000,
+    refetchIntervalInBackground: true,
   });
 
   const cancelMut = useMutation({

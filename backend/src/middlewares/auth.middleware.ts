@@ -39,6 +39,18 @@ export function authorize(...roles: Role[]) {
   };
 }
 
+// Auth isteğe bağlı — token varsa decode eder, yoksa next() der (guest checkout için)
+export function optionalAuthenticate(req: Request, _res: Response, next: NextFunction) {
+  const token = req.cookies?.accessToken as string | undefined;
+  if (!token) return next();
+  try {
+    req.user = jwt.verify(token, env.JWT_SECRET) as AuthPayload;
+  } catch {
+    // Süresi dolmuş/geçersiz token → guest gibi devam et
+  }
+  next();
+}
+
 // Logout sonrası kara listeye alınan access token kontrolü
 export async function checkBlacklist(req: Request, _res: Response, next: NextFunction) {
   const token = req.cookies?.accessToken as string | undefined;

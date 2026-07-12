@@ -1,5 +1,5 @@
 import { Router }                               from 'express';
-import { authenticate, checkBlacklist, authorize } from '../middlewares/auth.middleware.js';
+import { authenticate, checkBlacklist, authorize, optionalAuthenticate } from '../middlewares/auth.middleware.js';
 import { rateLimit }                            from '../middlewares/rate-limit.middleware.js';
 import { auditLog }                             from '../middlewares/audit.middleware.js';
 import {
@@ -16,6 +16,7 @@ export const bookingRouter = Router();
 bookingRouter.post(
   '/',
   rateLimit(10, 60),
+  optionalAuthenticate,
   createBookingHandler,
 );
 

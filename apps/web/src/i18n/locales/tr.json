@@ -22,9 +22,50 @@
   },
   "home": {
     "hero": {
+      "badge": "🏆 #1 Dalaman Transfer Hizmeti",
       "title": "Dalaman Havalimanı Transfer",
       "subtitle": "Güvenli, konforlu ve zamanında ulaşım hizmeti",
       "cta": "Hemen Rezervasyon Yap"
+    },
+    "howItWorks": {
+      "badge": "Basit Süreç",
+      "title": "Nasıl Çalışır?",
+      "desc": "Sadece birkaç adımda güvenli ve konforlu transferinizi rezerve edin.",
+      "step1": { "title": "Güzergah Seçin", "desc": "Nereden nereye gideceğinizi ve tarih / saat bilgisini girin." },
+      "step2": { "title": "Araç Seçin", "desc": "İhtiyacınıza uygun araç sınıfını ve fiyatı belirleyin." },
+      "step3": { "title": "Onaylayın", "desc": "Bilgilerinizi girin ve ödemenizi tamamlayın." },
+      "step4": { "title": "Yolculuğu Yaşayın", "desc": "Şoförünüz belirtilen saatte sizi hazır bekliyor olacak." }
+    },
+    "featuresExt": {
+      "badge": "Neden Biz?",
+      "title": "Neden Bizi Tercih Etmelisiniz?",
+      "desc": "Profesyonel ekibimiz ve modern araç filomuzla her yolculuğu konforlu kılıyoruz.",
+      "f1": { "title": "Doğrudan Transfer", "desc": "Aktarmasız, kapıdan kapıya özel araç hizmeti." },
+      "f2": { "title": "Güvenli Seyahat", "desc": "Sigortalı araçlar ve lisanslı profesyonel şoförler." },
+      "f3": { "title": "Zamanında Ulaşım", "desc": "Uçuş takibi ile gecikmesiz karşılama garantisi." },
+      "f4": { "title": "Geniş Güzergah", "desc": "Havalimanı, otel ve tüm bölgelere transfer imkânı." },
+      "f5": { "title": "Şeffaf Fiyat", "desc": "Rezervasyon anında kesin fiyat, gizli ücret yok." },
+      "f6": { "title": "7/24 Destek", "desc": "Gece gündüz müşteri hizmetleri desteğimiz yanınızda." }
+    },
+    "testimonials": {
+      "badge": "Müşteri Yorumları",
+      "title": "Binlerce Yolcu Güvendi",
+      "reviewsLabel": "4.9/5 ortalama puan · 500+ değerlendirme",
+      "t1": { "name": "James R.", "role": "İş Seyahati", "text": "Mükemmel hizmet! Şoför tam zamanında geldi, araç son derece temizdi. Her seyahatimde tercihim olacak." },
+      "t2": { "name": "Sophia K.", "role": "Tatil Yolcusu", "text": "Aile tatilimizde harika bir deneyim yaşadık. Çocuklu seyahat için ideal; güvenilir ve rahat bir hizmet." },
+      "t3": { "name": "Michael T.", "role": "Kurumsal Müşteri", "text": "Şirketimizin tüm transfer ihtiyaçları için kullanıyoruz. Profesyonellik ve güvenilirlik bir arada." }
+    },
+    "footer": {
+      "desc": "Dalaman Havalimanı ve bölge otelleri arasında güvenilir, konforlu ve zamanında transfer hizmeti.",
+      "servicesTitle": "HİZMETLER",
+      "services": ["Havalimanı Transferi", "Otel Transferi", "Özel Transfer", "Grup Transferi"],
+      "fleetTitle": "ARAÇ FİLOSU",
+      "fleet": ["Sedan", "VIP Vito", "Minibüs", "Otobüs"],
+      "companyTitle": "KURUMSAL",
+      "company": ["Hakkımızda", "Blog", "İletişim", "Kariyer"],
+      "copyright": "© 2025 Dalaman Transfer. Tüm hakları saklıdır.",
+      "privacy": "Gizlilik Politikası",
+      "terms": "Kullanım Koşulları"
     },
     "search": {
       "from": "Nereden",

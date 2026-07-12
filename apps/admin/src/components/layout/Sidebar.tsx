@@ -11,11 +11,14 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: '/dashboard',    icon: '📊', label: 'Dashboard' },
   { to: '/bookings',     icon: '📋', label: 'Rezervasyonlar' },
-  { to: '/drivers',      icon: '🚗', label: 'Şoförler' },
+  { to: '/locations',    icon: '📍', label: 'Lokasyonlar',    adminOnly: true },
+  { to: '/drivers',      icon: '👨‍✈️', label: 'Şoförler' },
+  { to: '/vehicles',     icon: '🚗', label: 'Araçlar' },
   { to: '/pricing',      icon: '💰', label: 'Fiyatlandırma' },
   { to: '/coupons',      icon: '🎟️', label: 'Kuponlar' },
   { to: '/users',        icon: '👥', label: 'Kullanıcılar',   adminOnly: true },
   { to: '/integrations', icon: '🔌', label: 'Entegrasyonlar', adminOnly: true },
+  { to: '/settings',     icon: '⚙️', label: 'Sistem Ayarları', adminOnly: true },
 ];
 
 export function Sidebar() {

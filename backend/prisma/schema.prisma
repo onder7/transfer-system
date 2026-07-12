@@ -26,8 +26,9 @@ enum BookingStatus {
 }
 
 enum PaymentMethod {
-  ONLINE           // PayTR ile online
-  CASH_ON_DELIVERY // Kapıda ödeme
+  ONLINE           // PayTR ile online kredi kartı
+  BANK_TRANSFER    // Havale / EFT
+  CASH_ON_DELIVERY // Araçta nakit ödeme
 }
 
 enum PaymentStatus {
@@ -66,16 +67,17 @@ model User {
   lastName      String
   passwordHash  String?
   role          Role      @default(CUSTOMER)
-  isActive      Boolean   @default(true)    // admin tarafından deaktive edilebilir
-  isGuest       Boolean   @default(false)   // guest checkout
-  consentGiven  Boolean   @default(false)   // KVKK açık rıza
+  isActive      Boolean   @default(true)
+  isGuest       Boolean   @default(false)
+  consentGiven  Boolean   @default(false)
   consentAt     DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  bookings      Booking[]
-  assignments   DriverAssignment[]
-  auditLogs     AuditLog[]
+  bookings        Booking[]
+  assignments     DriverAssignment[]
+  auditLogs       AuditLog[]
+  defaultVehicles Vehicle[]          @relation("DriverDefaultVehicle")
 }
 
 model Location {
@@ -108,6 +110,7 @@ model VehicleClass {
   prices      PriceMatrix[]
   assignments DriverAssignment[]
   bookings    Booking[]
+  vehicles    Vehicle[]
 }
 
 model PriceMatrix {
@@ -121,6 +124,7 @@ model PriceMatrix {
   basePrice      Decimal      @db.Decimal(10, 2)
   currency       String       @default("TRY")
   returnDiscount Decimal      @default(0) @db.Decimal(5, 2) // gidiş-dönüş indirim %
+  isActive       Boolean      @default(true)
 
   @@unique([fromLocationId, toLocationId, vehicleClassId])
 }
@@ -135,6 +139,15 @@ model PriceSurcharge {
   startDate  DateTime?                       // sezon başlangıcı
   endDate    DateTime?
   isActive   Boolean   @default(true)
+}
+
+// Çocuk fiyatlandırma kuralları
+model ChildPriceRule {
+  id              String  @id @default(cuid())
+  label           String  @default("Çocuk (0-12 yaş)")
+  maxAge          Int     @default(12)        // Bu kurala giren max yaş
+  discountPercent Int     @default(100)       // 100 = ücretsiz, 50 = %50 indirim
+  isActive        Boolean @default(true)
 }
 
 model Booking {
@@ -234,6 +247,21 @@ model Coupon {
   bookings Booking[]
 }
 
+model Vehicle {
+  id              String       @id @default(cuid())
+  plate           String       @unique
+  vehicleClass    VehicleClass @relation(fields: [vehicleClassId], references: [id])
+  vehicleClassId  String
+  defaultDriver   User?        @relation("DriverDefaultVehicle", fields: [defaultDriverId], references: [id])
+  defaultDriverId String?
+  isActive        Boolean      @default(true)
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  assignments DriverAssignment[]
+}
+
 model DriverAssignment {
   id             String       @id @default(cuid())
   booking        Booking      @relation(fields: [bookingId], references: [id])
@@ -242,12 +270,13 @@ model DriverAssignment {
   driverId       String
   vehicleClass   VehicleClass @relation(fields: [vehicleClassId], references: [id])
   vehicleClassId String
-  vehiclePlate   String?
+  vehicle        Vehicle?     @relation(fields: [vehicleId], references: [id])
+  vehicleId      String?
+  vehiclePlate   String?      // snapshot — araç silinse bile tarihsel kayıt korunur
   status         String       @default("ASSIGNED") // ASSIGNED | EN_ROUTE | COMPLETED
   assignedAt     DateTime     @default(now())
   completedAt    DateTime?
 
-  // Çakışma/müsaitlik sorgusunda kullanılır
   @@index([driverId])
 }
 
@@ -290,6 +319,14 @@ model AuditLog {
   createdAt  DateTime @default(now())
 
   @@index([entityType, entityId])
+}
+
+// Sistem parametreleri (admin panelinden yönetilir)
+model SystemSetting {
+  key       String   @id  // "cash_confirm_timeout_min", "bank_confirm_timeout_min" vb.
+  value     String
+  label     String   @default("")
+  updatedAt DateTime @updatedAt
 }
 
 model IntegrationSetting {

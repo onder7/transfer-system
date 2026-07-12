@@ -1,7 +1,8 @@
 import { prisma }                              from '../config/database.js';
 import { AppError }                           from '../middlewares/error.middleware.js';
 import { validateCoupon }                     from './coupon.service.js';
-import { queueNotification, bookingConfirmationHtml } from './notification.service.js';
+import { queueNotification, bookingConfirmationHtml, bookingReceivedHtml } from './notification.service.js';
+import { autoAssignBooking }                  from './driver.service.js';
 import type { CreateBookingInput }            from '@transfer/shared';
 import type { PriceSurcharge, BookingStatus } from '@prisma/client';
 
@@ -46,7 +47,19 @@ export async function createBooking(
   });
   if (existing) return { booking: existing.booking, payment: existing, isNew: false };
 
-  // 2. Lokasyonlar var mı?
+  // 2. Minimum ileriye dönük rezervasyon kontrolü
+  const transferDate = new Date(data.transferDate);
+  const advanceSetting = await prisma.systemSetting.findUnique({ where: { key: 'min_advance_minutes' } });
+  const minAdvanceMin  = parseInt(advanceSetting?.value ?? '60', 10);
+  const earliestAllowed = new Date(Date.now() + minAdvanceMin * 60_000);
+  if (transferDate < earliestAllowed) {
+    const h = Math.floor(minAdvanceMin / 60);
+    const m = minAdvanceMin % 60;
+    const label = h > 0 ? (m > 0 ? `${h} saat ${m} dakika` : `${h} saat`) : `${m} dakika`;
+    throw new AppError(400, `Rezervasyon en az ${label} sonrası için yapılabilir.`);
+  }
+
+  // 3. Lokasyonlar var mı?
   const [fromLoc, toLoc, vehicleClass] = await Promise.all([
     prisma.location.findUnique({ where: { id: data.fromLocationId } }),
     prisma.location.findUnique({ where: { id: data.toLocationId } }),
@@ -61,7 +74,55 @@ export async function createBooking(
     throw new AppError(400, `Bu araç en fazla ${vehicleClass.capacity} kişi taşıyabilir`);
   }
 
-  // 3. Fiyat — backend'de tekrar hesapla, client'a güvenme
+  // 4. Slot çakışma kontrolü — buffer sistem ayarından okunur
+  const turnaroundSetting = await prisma.systemSetting.findUnique({
+    where: { key: 'vehicle_turnaround_minutes' },
+  });
+  const bufferMs = (turnaroundSetting ? Number(turnaroundSetting.value) : 120) * 60_000;
+  const slotFrom = new Date(transferDate.getTime() - bufferMs);
+  const slotTo   = new Date(transferDate.getTime() + bufferMs);
+
+  if (vehicleClass.isShared) {
+    // Paylaşımlı araç: aynı güzergah + saat kalan kapasite kontrolü
+    const activeForSlot = await prisma.booking.findMany({
+      where: {
+        fromLocationId: data.fromLocationId,
+        toLocationId:   data.toLocationId,
+        vehicleClassId: data.vehicleClassId,
+        transferDate:   transferDate,
+        status:         { notIn: ['CANCELLED', 'COMPLETED'] },
+      },
+      select: { adultCount: true, childCount: true },
+    });
+    const occupied  = activeForSlot.reduce((s, b) => s + b.adultCount + b.childCount, 0);
+    const remaining = vehicleClass.capacity - occupied;
+    if (remaining < totalPassengers) {
+      throw new AppError(409, `Bu tarihte bu araçta yeterli yer yok. Kalan kapasite: ${remaining} kişi.`);
+    }
+  } else {
+    // Özel araç: tüm sınıftaki aktif araç sayısı vs ±4 saat içindeki aktif rezervasyon sayısı
+    const [vehicleCount, bookedCount] = await Promise.all([
+      prisma.vehicle.count({
+        where: { vehicleClassId: data.vehicleClassId, isActive: true },
+      }),
+      prisma.booking.count({
+        where: {
+          vehicleClassId: data.vehicleClassId,
+          transferDate:   { gte: slotFrom, lte: slotTo },
+          status:         { notIn: ['CANCELLED', 'COMPLETED'] },
+        },
+      }),
+    ]);
+
+    if (bookedCount >= vehicleCount) {
+      const msg = vehicleCount === 0
+        ? `Bu araç sınıfında kayıtlı aktif araç bulunmuyor.`
+        : `Bu saatte ${vehicleClass.name} sınıfında tüm araçlar dolu (${vehicleCount} araç, ${bookedCount} aktif rezervasyon). Lütfen farklı bir saat seçin.`;
+      throw new AppError(409, msg);
+    }
+  }
+
+  // 5. Fiyat — backend'de tekrar hesapla, client'a güvenme
   const [priceRow, surcharges] = await Promise.all([
     prisma.priceMatrix.findUnique({
       where: {
@@ -76,8 +137,7 @@ export async function createBooking(
   ]);
   if (!priceRow) throw new AppError(404, 'Bu güzergah için fiyat tanımlı değil');
 
-  const transferDate = new Date(data.transferDate);
-  const multiplier   = calcMultiplier(surcharges, transferDate);
+  const multiplier = calcMultiplier(surcharges, transferDate);
   const baseUnit = Number(priceRow.basePrice) * multiplier;
   // Paylaşımlı araç → kişi başı; özel → araç başı
   let price = vehicleClass.isShared
@@ -152,14 +212,40 @@ export async function createBooking(
     return { booking, payment };
   });
 
+  // Rezervasyon alındı emaili (ödeme onayından bağımsız, anında gönderilir)
+  const { booking } = result;
+  const recipient = booking.guestEmail ?? (data as any).email ?? null;
+  if (recipient) {
+    void queueNotification({
+      bookingId: booking.id,
+      channel:   'EMAIL',
+      recipient,
+      subject:   `Rezervasyon Alındı — ${booking.bookingRef}`,
+      body:      bookingReceivedHtml({
+        bookingRef:   booking.bookingRef,
+        guestName:    booking.guestName,
+        transferDate: booking.transferDate,
+        fromLocation: booking.fromLocation,
+        toLocation:   booking.toLocation,
+        price:        booking.price,
+        currency:     booking.currency,
+      }),
+    });
+  }
+
   return { ...result, isNew: true };
 }
 
 // ─── Müşteri rezervasyon listesi ─────────────────────────────────────────────
 
-export async function getMyBookings(userId: string) {
+export async function getMyBookings(userId: string, userEmail?: string) {
   return prisma.booking.findMany({
-    where:   { customerId: userId },
+    where: {
+      OR: [
+        { customerId: userId },
+        ...(userEmail ? [{ guestEmail: userEmail, customerId: null }] : []),
+      ],
+    },
     orderBy: { createdAt: 'desc' },
     include: {
       fromLocation: { select: { name: true } },
@@ -186,7 +272,7 @@ export async function getBooking(id: string, userId?: string, isAdmin = false) {
     include: {
       fromLocation: true,
       toLocation:   true,
-      payment:      true,
+      payment:      { select: { status: true, method: true, amount: true, refundAmount: true } },
       assignment:   { include: { driver: { select: { firstName: true, lastName: true, phone: true } } } },
       flightInfo:   true,
       customer:     { select: { email: true } },
@@ -206,7 +292,20 @@ export async function getBooking(id: string, userId?: string, isAdmin = false) {
 export async function getBookingByRef(ref: string) {
   const booking = await prisma.booking.findUnique({
     where:   { bookingRef: ref },
-    include: { fromLocation: true, toLocation: true, payment: true, flightInfo: true },
+    include: {
+      fromLocation: true,
+      toLocation:   true,
+      vehicleClass: { select: { name: true } },
+      payment:      { select: { status: true, method: true } },
+      flightInfo:   true,
+      assignment: {
+        select: {
+          status: true,
+          vehiclePlate: true,
+          driver: { select: { firstName: true, lastName: true, phone: true } },
+        },
+      },
+    },
   });
   if (!booking) throw new AppError(404, 'Rezervasyon bulunamadı');
   return booking;
@@ -259,10 +358,10 @@ export async function confirmBooking(bookingId: string) {
   const booking = await prisma.booking.update({
     where:   { id: bookingId },
     data:    { status: 'CONFIRMED' },
-    include: { fromLocation: true, toLocation: true },
+    include: { fromLocation: true, toLocation: true, customer: { select: { email: true } } },
   });
 
-  const recipient = booking.guestEmail;
+  const recipient = booking.guestEmail ?? booking.customer?.email ?? null;
   if (recipient) {
     await queueNotification({
       bookingId: booking.id,
@@ -280,6 +379,9 @@ export async function confirmBooking(bookingId: string) {
       }),
     });
   }
+
+  // Onay sonrası otomatik araç+şoför atama denemesi (başarısız olursa CONFIRMED'da kalır)
+  await autoAssignBooking(booking.id);
 
   return booking;
 }
