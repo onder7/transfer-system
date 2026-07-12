@@ -1,0 +1,50 @@
+node_modules/
+dist/
+build/
+.env
+.env.local
+.env.*.local
+
+# Prisma — migration'lar commit edilmeli (sadece dev.db ve .env ignore edilir)
+# backend/prisma/migrations/  ← intentionally NOT ignored
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vite
+apps/*/dist/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Sertifikalar ve private key'ler
+*.cer
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Claude session files
+.claude/launch.json
+
+# Yüklenen araç görselleri
+backend/uploads/
+
+# Repo dışı geçici dosyalar — kök seviye ekran görüntüleri / taslak görseller
+/*.png
+/*.jpg
+/*.jpeg
+
+# Kök seviye taslak veri dosyaları (uygulama kaynağı değil)
+/bolge.json
+/dalama bolge.json
+/1783769399389.json
+
+# Bolt.new prototip klasörleri (referans; repoya dahil edilmiyor)
+/project-bolt-fronted/
+/project-bolt-sb1-waumpqpy/

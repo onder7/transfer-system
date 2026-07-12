@@ -1,0 +1,168 @@
+Dalaman havayolu transfer operasyonlarını (rezervasyon, güzergah/bölge yönetimi, araç sınıfları, fiyatlandırma matrisi, dinamik fiyatlandırma, kuponlar ve şoför/operasyon yönetimi) yönetecek, modern ve yüksek performanslı bir sistem.
+
+Teknoloji yığını: React+Vite, Zustand, Node.js+Express+TypeScript, Prisma+PostgreSQL, Redis
+
+> **Alınan kararlar (2026-07-09):**
+> - Frontend: **Vite + React** (SEO ikincil öncelik).
+> - Ödeme: **PayTR** (iframe + server-to-server callback, 3D Secure).
+> - Uçuş takibi (rötar yönetimi) **MVP kapsamında** — AeroDataBox/FlightAware.
+> - Çoklu para birimi (TRY/EUR/GBP) — Dalaman ağırlıklı UK/AB turisti.
+
+---
+
+## 📋 DETAYLI TODO LİSTESİ (Aşama Aşama)
+
+---
+
+### Faz 1: Proje Kurulumu ve Veri Tabanı Mimarisi
+
+* [ ] **Backend Kurulumu:** Node.js + Express projesini TypeScript ile başlat. Docker üzerinde PostgreSQL ve Redis konteynerlerini ayağa kaldır.
+* [ ] **Prisma Entegrasyonu:** Prisma CLI'yı kur, veri tabanı bağlantısını yapılandır.
+* [ ] **Veri Tabanı Şemasının Tasarlanması (`schema.prisma`):**
+  * [ ] `User` ve `Role` (Admin, Customer, Driver, Operator) modellerini oluştur.
+  * [ ] `Location` (Dalaman Havalimanı, Fethiye, Marmaris, Ölüdeniz vb.) tablosunu yaz.
+  * [ ] `VehicleClass` (Sedan, VIP Vito, Minibüs — kapasite ve özelliklerle) tablosunu oluştur.
+  * [ ] `PriceMatrix` (Lokasyon → Lokasyon + VehicleClass bazlı fiyat) tablosunu tasarla.
+  * [ ] `Booking` (uçuş kodu, transfer tarihi, yolcu sayısı, dönüş transferi, fiyat, statü) tablosunu oluştur.
+  * [ ] `Payment` (tutar, **para birimi + kur snapshot'ı**, yöntem: online/kapıda, statü: PENDING/PAID/REFUNDED, iade kaydı, **idempotency key**) tablosunu ekle.
+  * [ ] `Coupon` (indirim kodu, yüzde/sabit tutar, kullanım limiti, geçerlilik tarihi) tablosunu ekle.
+  * [ ] `DriverAssignment` (Booking → Driver + Vehicle ataması, atama tarihi, statü) tablosunu oluştur.
+  * [ ] `FlightInfo` (uçuş no, tahmini/gerçek iniş saati, statü: SCHEDULED/DELAYED/LANDED, son güncelleme) tablosunu ekle.
+  * [ ] `AuditLog` (kim, ne zaman, hangi kayıtta ne yaptı) tablosunu ekle — KVKK + hesap verebilirlik.
+  * [ ] `IntegrationSetting` (servis adı, konfig JSON, **şifreli anahtarlar**, aktif/pasif, sağlayıcı seçimi, güncelleyen) tablosunu ekle.
+  * [ ] `Notification` (SMS/Email/WhatsApp gönderim kuyruğu, tür, statü, gönderim zamanı) tablosunu ekle.
+  * [ ] **Booking statü state machine**'i tanımla (PENDING → CONFIRMED → ASSIGNED → EN_ROUTE → COMPLETED / CANCELLED); geçişleri tek serviste kontrol et.
+* [ ] **Seed Datası:** Bölgeler, araç sınıfları, test fiyat matrisi ve örnek admin kullanıcısı içeren `seed.ts` yaz.
+* [ ] **Monorepo Kurulumu:** npm/pnpm workspaces ile `backend`, `apps/web`, `apps/admin`, `packages/shared` yapısını kur. Node 22 LTS'e sabitle (`.nvmrc` / `engines`).
+* [ ] **Ortak Paket (`packages/shared`):** Zod şemaları + tipleri barındıran `@transfer/shared` paketini oluştur; backend ve iki frontend de buradan import etsin (tek kaynak).
+* [ ] **Müşteri Sitesi (`apps/web`):** Vite + React 19 + TypeScript. **Tailwind CSS v4** (CSS-first config) + Shadcn UI kurulumunu tamamla. Klasör yapısını (components, hooks, store, pages, services, locales) kurgula.
+* [ ] **Admin Panel (`apps/admin`):** Vite + React 19 + TypeScript. **TailAdmin** free template'i temel al (layout/sidebar/header + ApexCharts). Aynı Tailwind v4 sistemi; ortak form/tablo/dialog primitive'leri Shadcn'den al. State: Zustand, Form: RHF + Zod, Data: TanStack Query (müşteri ile aynı).
+* [ ] **`.env.example` dosyaları:** Backend (JWT_SECRET, SETTINGS_ENCRYPTION_KEY dahil) ve iki frontend (`apps/web`, `apps/admin`) için örnek env dosyalarını hazırla. Gerçek değerleri asla repoya commit etme. 3. parti anahtarlar `.env`'de değil admin panelinde tutulur (bkz. Entegrasyon Ayarları).
+
+---
+
+### Faz 2: Kimlik Doğrulama ve Güvenlik Altyapısı
+
+* [ ] **Backend Auth:**
+  * [ ] JWT `accessToken` (15dk) + `refreshToken` (7 gün) yapısını kur.
+  * [ ] Rotate refresh token: her yenilemede eski token Redis'ten silinir, yenisi yazılır.
+  * [ ] Logout'ta access token'ı Redis kara listesine al (blacklist).
+  * [ ] HTTP-Only, Secure, SameSite=Strict cookie ayarlarını yapılandır.
+* [ ] **Rate Limiting:** Redis tabanlı rate limiter'ı auth ve arama endpoint'lerine uygula.
+* [ ] **Zod Validasyonları:** Kayıt, giriş, profil güncelleme için Zod şemalarını hazırla.
+* [ ] **Frontend Auth:**
+  * [ ] Zustand ile `authStore` oluştur (kullanıcı, token durumu, roller).
+  * [ ] Axios interceptors ile 401 hatalarında otomatik token yenileme (`silent refresh`) mantığını kur.
+  * [ ] Admin paneli ve müşteri profil sayfaları için `ProtectedRoute` bileşenini yaz.
+* [ ] **Swagger / OpenAPI:** `swagger-ui-express` ve `zod-to-openapi` ile API dokümantasyonunu `/api-docs` altında yayınla.
+* [ ] **KVKK / Veri Koruma:**
+  * [ ] Kayıt ve rezervasyon formuna aydınlatma metni + açık rıza checkbox'ı ekle.
+  * [ ] Kritik yazma işlemlerini `AuditLog`'a yazan middleware yaz.
+  * [ ] Veri saklama/silme (data retention) politikasını ve "hesabımı sil" akışını tanımla.
+* [ ] **Entegrasyon Ayarları Altyapısı (admin-managed config):**
+  * [ ] AES-256-GCM şifreleme util'i yaz (`SETTINGS_ENCRYPTION_KEY` ile encrypt/decrypt).
+  * [ ] `ConfigService`: entegrasyon ayarlarını DB'den okur, çözer, Redis'te cache'ler; DB değeri yoksa `.env` bootstrap'e düşer.
+  * [ ] Tüm 3. parti istemcileri (PayTR, uçuş, harita, SMS, WhatsApp, SMTP, kur) bu servisten anahtar alacak şekilde soyutla — kod içinde `process.env` doğrudan kullanılmasın.
+  * [ ] Anahtar değerleri API yanıtında asla düz dönme (write-only, maskeli).
+
+---
+
+### Faz 3: Transfer Arama, Fiyatlandırma ve Rezervasyon Akışı (Core Feature)
+
+* [ ] **Arama Widget'ı (Ana Sayfa):**
+  * [ ] Kalkış / Varış noktası seçimi: hem tanımlı lokasyonlar (`Location`) hem **serbest adres** (autocomplete + geocoding) desteklensin.
+  * [ ] Tarih, saat, yolcu sayısı ve "Tek Yön / Gidiş-Dönüş" seçimi.
+* [ ] **Fiyatlandırma ve Araç Listeleme API'si:**
+  * [ ] Seçilen lokasyonlara göre `PriceMatrix`'ten fiyatı çeken endpoint'i yaz.
+  * [ ] Gidiş-dönüş seçiminde indirim mantığını uygula.
+  * [ ] Dinamik fiyat kuralları: sezonluk/gece zammı (surcharge) katsayılarını uygula.
+  * [ ] Çoklu para birimi: baz fiyatı günlük kurla TRY/EUR/GBP göster; kur çekimini günlük cron ile Redis'e al.
+  * [ ] Redis ile fiyat sorgularını önbelleğe al (TTL: 10 dk).
+* [ ] **Kupon Doğrulama API'si:** `POST /api/coupons/validate` — kod, kullanım limiti ve tarih geçerliliğini kontrol et.
+* [ ] **Araç Seçim Sayfası:** TanStack Query ile araç listesini fiyat, kapasite ve özelliklerle kart tasarımında listele.
+* [ ] **Yolcu Bilgileri & Özet Formu:** Ad, iletişim, uçuş numarası, dönüş uçuş numarası, ekstra talepler (bebek koltuğu vb.) için React Hook Form + Zod ile form oluştur.
+* [ ] **Guest Checkout:** Zorunlu kayıt olmadan misafir olarak rezervasyon (e-posta ile); sonrasında opsiyonel hesap oluşturma. Dönüşümü artırır.
+* [ ] **Checkout & Ödeme (PayTR):**
+  * [ ] Backend'de `Booking` + `Payment` (PENDING) kaydını **idempotency key** ile atomik oluştur (çift tıklama = çift booking olmasın).
+  * [ ] PayTR iframe token'ı üret, 3D Secure ödeme akışını kur.
+  * [ ] **Webhook/callback:** PayTR server-to-server bildiriminde hash doğrula; yalnızca geçerli callback'te `Payment` → PAID, `Booking` → CONFIRMED yap. Client dönüşüne güvenme.
+  * [ ] Kapıda ödeme seçeneği için rezervasyonu PENDING bırak, şoför onayında PAID yap.
+  * [ ] Ödeme PAID olunca onay bildirimini tetikle.
+  * [ ] **İptal/iade politika motoru:** zaman bazlı iade oranı (ör. 48s öncesi %100, 24s %50, sonrası yok) hesapla; refund endpoint'i `Payment` → REFUNDED yapsın.
+* [ ] **Rezervasyon Onay Bildirimi (E-posta/SMS):** Ödeme tamamlandığında müşteriye otomatik onay maili ve SMS gönder (Nodemailer + Twilio). — *Kullanıcı sisteme güvenmesi için bu adım ertelenebilir değil.*
+  * [ ] **Harita / Adres Servisi (çekirdek):** Sağlayıcı-bağımsız soyutlama (default: OSM stack — Photon autocomplete + Nominatim geocoding + OSRM mesafe; alternatif: Google). Sağlayıcı ve anahtar admin panelinden seçilir.
+  * [ ] **Autocomplete:** Adres/otel arama önerileri.
+  * [ ] **Geocoding:** Seçilen adresi koordinata çevir.
+  * [ ] **Mesafe:** İki nokta arası km/dakika hesabı (OSRM/Distance Matrix).
+  * [ ] **Mesafe-bazlı fiyat:** Tanımlı matris dışı serbest adreslerde km × birim fiyat + min. ücret ile hesapla; sonucu araç sınıfına göre çarpanla.
+* [ ] *(Opsiyonel)* WhatsApp bildirimi (Meta Cloud API) — turizmde SMS'ten daha etkili.
+
+---
+
+### Faz 4: Şoför Arayüzü ve Operasyon Takibi
+
+* [ ] **Uçuş Takibi (MVP — rötar yönetimi):**
+  * [ ] AeroDataBox/FlightAware entegrasyonu: uçuş no → tahmini/gerçek iniş saati çek.
+  * [ ] Aktif rezervasyonların uçuş durumunu periyodik (cron/job) güncelle, `FlightInfo`'ya yaz.
+  * [ ] Rötar tespitinde şoför alma saatini otomatik kaydır ve şoför + müşteriye bildirim gönder.
+  * [ ] Admin panelinde uçuş statüsünü (SCHEDULED/DELAYED/LANDED) rezervasyon satırında göster.
+* [ ] **Şoför Mobil Arayüzü:**
+  * [ ] Şoföre atanan günlük transfer listesini gösteren sayfa.
+  * [ ] Transfer detayı: yolcu adı, uçuş kodu, terminal, otel adresi, özel talepler.
+  * [ ] Transfer statüsü güncelleme: "Yolda" → "Yolcu Alındı" → "Tamamlandı".
+* [ ] **Şoför Bildirimi:** Yeni transfer atandığında şoföre SMS + push notification gönder.
+* [ ] **Real-time Güncelleme (opsiyonel):** Socket.io veya SSE ile admin paneline canlı statü güncellemesi aktar.
+
+---
+
+### Faz 5: Yönetim Paneli (Admin & Operator Dashboard)
+
+* [ ] **Genel Bakış:** Günlük transfer sayıları, bekleyen rezervasyonlar, aktif şoförler ve kazanç grafikleri.
+* [ ] **Rezervasyon Yönetimi:** Tarih, bölge, statüye göre filtrelenebilen tablo. Onaylama / iptal / iade işlemleri.
+* [ ] **Lokasyon ve Fiyat Matrisi Yönetimi:** Yeni bölge ekleme, bölgeler arası araç bazlı fiyat güncelleme ekranı.
+* [ ] **Araç ve Şoför Atama:** Onaylanan transferlere müsait araç ve şoför atama mekanizması.
+  * [ ] **Çakışma/müsaitlik kontrolü:** Aynı şoför/araç aynı zaman aralığında ikinci transfere atanamasın (availability check + DB constraint).
+* [ ] **Kupon Yönetimi:** Kupon oluşturma, düzenleme, pasife alma ekranı.
+* [ ] **Bildirim Geçmişi:** Müşterilere ve şoförlere gönderilen SMS/email kayıtlarının listesi.
+* [ ] **Entegrasyon Ayarları Yönetimi:** 3. parti servis anahtarlarını (PayTR, uçuş API, harita sağlayıcı, SMS, WhatsApp, SMTP, kur) admin panelinden girme/güncelleme ekranı.
+  * [ ] Her servis için sağlayıcı seçimi + anahtar formu (maskeli, write-only alanlar).
+  * [ ] "Bağlantıyı test et" butonu (girilen anahtarla canlı doğrulama).
+  * [ ] Aktif/pasif toggle ve son güncelleyen bilgisi (`AuditLog`).
+
+---
+
+### Faz 6: Çok Dilli Destek ve Responsive Tasarım
+
+* [ ] **i18n Entegrasyonu:** `react-i18next` ile Türkçe ve İngilizce dil desteğini kur.
+  * [ ] `locales/tr.json` ve `locales/en.json` çeviri dosyalarını oluştur.
+  * [ ] Dil seçici bileşenini header'a ekle.
+  * [ ] URL tabanlı dil yönlendirmesi (`/en/`, `/tr/`) opsiyonel olarak değerlendir.
+* [ ] **Responsive Tasarım:**
+  * [ ] Tüm müşteri sayfalarını mobil-first yaklaşımıyla tasarla (Tailwind breakpoint'leri).
+  * [ ] Arama widget'ı, araç seçim ve rezervasyon formunu mobilde kullanılabilir yap.
+  * [ ] Admin panelini tablet ve masaüstü için optimize et.
+
+---
+
+### Faz 7: Monitoring, Loglama ve Canlıya Geçiş
+
+* [ ] **Yapılandırılmış Loglama:** Pino ile JSON formatında request/error loglarını kur. Log seviyelerini (info, warn, error) ortama göre ayarla.
+* [ ] **Hata Takibi:** Sentry'i hem backend hem frontend'e entegre et.
+* [ ] **Sağlık Kontrolü (Health Check):** `GET /api/health` — DB, Redis ve servis durumunu dönen endpoint yaz.
+* [ ] **Dockerize Etme:**
+  * [ ] Backend için `Dockerfile` hazırla (multi-stage build).
+  * [ ] Frontend için Nginx tabanlı `Dockerfile` hazırla (build + serve).
+  * [ ] `docker-compose.yml` (local) ve `docker-compose.prod.yml` (production) dosyalarını tamamla.
+* [ ] **CI/CD Pipeline:** GitHub Actions ile lint + test + build + Docker image push adımlarını otomatikleştir.
+
+---
+
+### Faz 8: Analitik ve Raporlama
+
+* [ ] **Operasyonel Raporlar:**
+  * [ ] Bölge bazlı doluluk oranları ve popüler güzergah analizi.
+  * [ ] Şoför performans metrikleri (tamamlanan transfer sayısı, geç kalma oranı).
+  * [ ] Gelir raporları: günlük / haftalık / aylık döküm.
+  * [ ] CSV / Excel export butonu (rezervasyon ve gelir tabloları için).
+* [ ] **Kupon Kullanım İstatistikleri:** Hangi kuponun ne kadar kullanıldığı, toplam indirim tutarı.
+* [ ] **Analitik Entegrasyonu:** Google Analytics 4 veya Plausible ile müşteri tarafı sayfa izleme.

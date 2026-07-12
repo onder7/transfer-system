@@ -1,0 +1,344 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enum'lar ────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  OPERATOR
+  CUSTOMER
+  DRIVER
+}
+
+enum BookingStatus {
+  PENDING     // Oluşturuldu, ödeme bekleniyor
+  CONFIRMED   // Ödeme alındı (PayTR callback)
+  ASSIGNED    // Şoför atandı
+  EN_ROUTE    // Şoför yolda
+  COMPLETED   // Transfer tamamlandı
+  CANCELLED   // İptal edildi
+}
+
+enum PaymentMethod {
+  ONLINE           // PayTR ile online kredi kartı
+  BANK_TRANSFER    // Havale / EFT
+  CASH_ON_DELIVERY // Araçta nakit ödeme
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+enum FlightStatus {
+  SCHEDULED
+  DELAYED
+  LANDED
+  CANCELLED
+}
+
+// ─── Modeller ─────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  phone         String?
+  firstName     String
+  lastName      String
+  passwordHash  String?
+  role          Role      @default(CUSTOMER)
+  isActive      Boolean   @default(true)
+  isGuest       Boolean   @default(false)
+  consentGiven  Boolean   @default(false)
+  consentAt     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  bookings        Booking[]
+  assignments     DriverAssignment[]
+  auditLogs       AuditLog[]
+  defaultVehicles Vehicle[]          @relation("DriverDefaultVehicle")
+}
+
+model Location {
+  id        String  @id @default(cuid())
+  name      String
+  nameEn    String?
+  type      String  // airport | hotel | region
+  lat       Float?
+  lng       Float?
+  address   String?
+  isActive  Boolean @default(true)
+
+  fromPrices   PriceMatrix[] @relation("FromLocation")
+  toPrices     PriceMatrix[] @relation("ToLocation")
+  fromBookings Booking[]     @relation("BookingFrom")
+  toBookings   Booking[]     @relation("BookingTo")
+}
+
+model VehicleClass {
+  id              String   @id @default(cuid())
+  name            String
+  nameEn          String?
+  capacity        Int               // maksimum yolcu sayısı
+  luggageCapacity Int      @default(2) // bagaj adedi
+  isShared        Boolean  @default(false) // paylaşımlı (shuttle) → fiyat kişi başı
+  features        String[] // ["wifi","water","child_seat","luggage"]
+  imageUrl        String?
+  isActive        Boolean  @default(true)
+
+  prices      PriceMatrix[]
+  assignments DriverAssignment[]
+  bookings    Booking[]
+  vehicles    Vehicle[]
+}
+
+model PriceMatrix {
+  id             String       @id @default(cuid())
+  fromLocation   Location     @relation("FromLocation", fields: [fromLocationId], references: [id])
+  fromLocationId String
+  toLocation     Location     @relation("ToLocation", fields: [toLocationId], references: [id])
+  toLocationId   String
+  vehicleClass   VehicleClass @relation(fields: [vehicleClassId], references: [id])
+  vehicleClassId String
+  basePrice      Decimal      @db.Decimal(10, 2)
+  currency       String       @default("TRY")
+  returnDiscount Decimal      @default(0) @db.Decimal(5, 2) // gidiş-dönüş indirim %
+  isActive       Boolean      @default(true)
+
+  @@unique([fromLocationId, toLocationId, vehicleClassId])
+}
+
+// Sezon/gece zammı katsayıları
+model PriceSurcharge {
+  id         String    @id @default(cuid())
+  name       String                          // "Gece Zammı", "Yaz Sezonu"
+  multiplier Decimal   @db.Decimal(5, 3)    // 1.20 = %20 zam
+  startHour  Int?                            // 0-23, gece zammı için
+  endHour    Int?
+  startDate  DateTime?                       // sezon başlangıcı
+  endDate    DateTime?
+  isActive   Boolean   @default(true)
+}
+
+// Çocuk fiyatlandırma kuralları
+model ChildPriceRule {
+  id              String  @id @default(cuid())
+  label           String  @default("Çocuk (0-12 yaş)")
+  maxAge          Int     @default(12)        // Bu kurala giren max yaş
+  discountPercent Int     @default(100)       // 100 = ücretsiz, 50 = %50 indirim
+  isActive        Boolean @default(true)
+}
+
+model Booking {
+  id         String        @id @default(cuid())
+  bookingRef String        @unique @default(cuid()) // müşteriye gösterilen kısa ref
+
+  // Müşteri — kayıtlı veya misafir
+  customer   User?         @relation(fields: [customerId], references: [id])
+  customerId String?
+  guestEmail String?
+  guestPhone String?
+  guestName  String?
+
+  // Lokasyonlar — tanımlı veya serbest adres (harita ile)
+  fromLocation    Location @relation("BookingFrom", fields: [fromLocationId], references: [id])
+  fromLocationId  String
+  toLocation      Location @relation("BookingTo",   fields: [toLocationId],   references: [id])
+  toLocationId    String
+  customFromAddress String?
+  customFromLat     Float?
+  customFromLng     Float?
+  customToAddress   String?
+  customToLat       Float?
+  customToLng       Float?
+
+  vehicleClass   VehicleClass @relation(fields: [vehicleClassId], references: [id])
+  vehicleClassId String
+  transferDate   DateTime
+  adultCount     Int      @default(1)
+  childCount     Int      @default(0)
+
+  // Uçuş bilgileri
+  flightNumber  String?
+  returnFlight  Boolean   @default(false)
+  returnFlightNo String?
+  returnDate    DateTime?
+
+  extraRequests String?   // bebek koltuğu, tekerlekli sandalye vb.
+  notes         String?   // operatör notları (iç kullanım)
+
+  price    Decimal       @db.Decimal(10, 2)
+  currency String        @default("TRY")
+  status   BookingStatus @default(PENDING)
+
+  // Kupon
+  coupon         Coupon?  @relation(fields: [couponId], references: [id])
+  couponId       String?
+  discountAmount Decimal? @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payment      Payment?
+  flightInfo   FlightInfo?
+  assignment   DriverAssignment?
+  notifications Notification[]
+}
+
+model Payment {
+  id        String @id @default(cuid())
+  booking   Booking @relation(fields: [bookingId], references: [id])
+  bookingId String  @unique
+
+  amount       Decimal       @db.Decimal(10, 2)
+  currency     String        @default("TRY")
+  exchangeRate Decimal?      @db.Decimal(10, 6) // ödeme anındaki kur snapshot
+  amountInTry  Decimal?      @db.Decimal(10, 2)
+
+  method PaymentMethod @default(ONLINE)
+  status PaymentStatus @default(PENDING)
+
+  idempotencyKey String  @unique          // çift ödeme koruması
+  paytryOrderId  String?                  // PayTR order id
+  paytryToken    String?                  // PayTR iframe token (geçici)
+
+  paidAt       DateTime?
+  refundedAt   DateTime?
+  refundAmount Decimal?  @db.Decimal(10, 2)
+  refundReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Coupon {
+  id           String    @id @default(cuid())
+  code         String    @unique
+  discountType String    // "percent" | "fixed"
+  amount       Decimal   @db.Decimal(10, 2)
+  maxUses      Int?
+  usedCount    Int       @default(0)
+  validFrom    DateTime?
+  validUntil   DateTime?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+
+  bookings Booking[]
+}
+
+model Vehicle {
+  id              String       @id @default(cuid())
+  plate           String       @unique
+  vehicleClass    VehicleClass @relation(fields: [vehicleClassId], references: [id])
+  vehicleClassId  String
+  defaultDriver   User?        @relation("DriverDefaultVehicle", fields: [defaultDriverId], references: [id])
+  defaultDriverId String?
+  isActive        Boolean      @default(true)
+  notes           String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  assignments DriverAssignment[]
+}
+
+model DriverAssignment {
+  id             String       @id @default(cuid())
+  booking        Booking      @relation(fields: [bookingId], references: [id])
+  bookingId      String       @unique
+  driver         User         @relation(fields: [driverId], references: [id])
+  driverId       String
+  vehicleClass   VehicleClass @relation(fields: [vehicleClassId], references: [id])
+  vehicleClassId String
+  vehicle        Vehicle?     @relation(fields: [vehicleId], references: [id])
+  vehicleId      String?
+  vehiclePlate   String?      // snapshot — araç silinse bile tarihsel kayıt korunur
+  status         String       @default("ASSIGNED") // ASSIGNED | EN_ROUTE | COMPLETED
+  assignedAt     DateTime     @default(now())
+  completedAt    DateTime?
+
+  @@index([driverId])
+}
+
+model FlightInfo {
+  id           String       @id @default(cuid())
+  booking      Booking      @relation(fields: [bookingId], references: [id])
+  bookingId    String       @unique
+  flightNumber String
+  scheduledAt  DateTime     // planlanan iniş
+  estimatedAt  DateTime?    // güncel tahmini iniş
+  actualAt     DateTime?    // gerçekleşen iniş
+  status       FlightStatus @default(SCHEDULED)
+  delayMinutes Int          @default(0)
+  lastCheckedAt DateTime    @default(now())
+}
+
+model Notification {
+  id        String              @id @default(cuid())
+  booking   Booking?            @relation(fields: [bookingId], references: [id])
+  bookingId String?
+  channel   NotificationChannel
+  recipient String              // email veya telefon
+  subject   String?
+  body      String
+  status    NotificationStatus  @default(QUEUED)
+  sentAt    DateTime?
+  errorMsg  String?
+  createdAt DateTime            @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  user       User?    @relation(fields: [userId], references: [id])
+  userId     String?
+  action     String   // "BOOKING_CANCELLED", "DRIVER_ASSIGNED" vb.
+  entityType String   // "Booking", "Payment" vb.
+  entityId   String
+  meta       Json?    // önceki / sonraki değerler
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
+
+// Sistem parametreleri (admin panelinden yönetilir)
+model SystemSetting {
+  key       String   @id  // "cash_confirm_timeout_min", "bank_confirm_timeout_min" vb.
+  value     String
+  label     String   @default("")
+  updatedAt DateTime @updatedAt
+}
+
+model IntegrationSetting {
+  id         String   @id @default(cuid())
+  // paytr | flight | map | sms | whatsapp | smtp | exchange
+  service    String   @unique
+  // paytr | aeroDataBox | flightAware | osm | google | netgsm | meta | sendgrid vb.
+  provider   String
+  configJson String   // şifresiz config (endpoint, timeout vb.)
+  secretJson String   // AES-256-GCM şifreli API anahtarları
+  isActive   Boolean  @default(true)
+  updatedBy  String?  // admin user id
+  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now())
+}

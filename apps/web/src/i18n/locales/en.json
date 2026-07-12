@@ -1,0 +1,154 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Something went wrong",
+    "retry": "Try again",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "close": "Close",
+    "passengers": "Passengers",
+    "currency": "TRY"
+  },
+  "nav": {
+    "home": "Home",
+    "search": "Search Transfers",
+    "myBookings": "My Bookings",
+    "login": "Login",
+    "register": "Register",
+    "logout": "Logout"
+  },
+  "home": {
+    "hero": {
+      "badge": "🏆 #1 Rated Dalaman Transfer",
+      "title": "Dalaman Airport Transfer",
+      "subtitle": "Safe, comfortable and on-time airport transfer service",
+      "cta": "Book Now"
+    },
+    "howItWorks": {
+      "badge": "Simple Process",
+      "title": "How It Works",
+      "desc": "Book your safe and comfortable transfer in just a few steps.",
+      "step1": { "title": "Choose Route", "desc": "Enter your pickup, drop-off location and date / time." },
+      "step2": { "title": "Select Vehicle", "desc": "Choose the vehicle class and price that suits your needs." },
+      "step3": { "title": "Confirm", "desc": "Fill in your details and complete your payment." },
+      "step4": { "title": "Enjoy the Ride", "desc": "Your driver will be ready at the agreed time." }
+    },
+    "featuresExt": {
+      "badge": "Why Choose Us?",
+      "title": "Why Travel With Us?",
+      "desc": "Our professional team and modern fleet make every journey comfortable.",
+      "f1": { "title": "Direct Transfer", "desc": "Non-stop, door-to-door private vehicle service." },
+      "f2": { "title": "Safe Travel", "desc": "Insured vehicles and licensed professional drivers." },
+      "f3": { "title": "On Time", "desc": "Flight tracking ensures you are met without delays." },
+      "f4": { "title": "Wide Coverage", "desc": "Transfers to airports, hotels and all regions." },
+      "f5": { "title": "Transparent Pricing", "desc": "Fixed price at booking time, no hidden fees." },
+      "f6": { "title": "24/7 Support", "desc": "Customer support available day and night." }
+    },
+    "testimonials": {
+      "badge": "Customer Reviews",
+      "title": "Trusted By Thousands",
+      "reviewsLabel": "4.9/5 average rating · 500+ reviews",
+      "t1": { "name": "James R.", "role": "Business Travel", "text": "Excellent service! The driver was right on time and the vehicle was spotless. My go-to choice every trip." },
+      "t2": { "name": "Sophia K.", "role": "Holiday Traveller", "text": "Had a wonderful experience on our family holiday. Perfect for travelling with kids — reliable and comfortable." },
+      "t3": { "name": "Michael T.", "role": "Corporate Client", "text": "We use them for all of our company's transfer needs. Professionalism and reliability combined." }
+    },
+    "footer": {
+      "desc": "Reliable, comfortable and on-time transfer service between Dalaman Airport and regional hotels.",
+      "servicesTitle": "SERVICES",
+      "services": ["Airport Transfer", "Hotel Transfer", "Private Transfer", "Group Transfer"],
+      "fleetTitle": "OUR FLEET",
+      "fleet": ["Sedan", "VIP Vito", "Minibus", "Coach"],
+      "companyTitle": "COMPANY",
+      "company": ["About Us", "Blog", "Contact", "Careers"],
+      "copyright": "© 2025 Dalaman Transfer. All rights reserved.",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service"
+    },
+    "search": {
+      "from": "From",
+      "to": "To",
+      "date": "Transfer Date",
+      "passengers": "Passengers",
+      "flight": "Flight Number (optional)",
+      "search": "Search Transfers",
+      "returnTrip": "Add return transfer"
+    },
+    "features": {
+      "safe": { "title": "Safe Travel", "desc": "Professional drivers, insured vehicles" },
+      "ontime": { "title": "On Time", "desc": "Flight tracking with automatic updates" },
+      "comfort": { "title": "Comfortable", "desc": "Sedan, VIP Vito and Minibus options" },
+      "support": { "title": "24/7 Support", "desc": "We're always here for you" }
+    }
+  },
+  "search": {
+    "title": "Transfer Results",
+    "noResult": "No transfers found for this route",
+    "perPerson": "Per person",
+    "total": "Total",
+    "capacity": "Up to {{count}} passengers",
+    "selectVehicle": "Select",
+    "surcharge": "Surcharge applies",
+    "features": {
+      "water": "Drinking Water",
+      "wifi": "Wi-Fi",
+      "child_seat": "Child Seat",
+      "luggage": "Extra Luggage"
+    }
+  },
+  "booking": {
+    "title": "Booking Details",
+    "guestName": "Full Name",
+    "guestEmail": "Email",
+    "guestPhone": "Phone",
+    "flightNumber": "Flight Number",
+    "extraRequests": "Special Requests",
+    "couponCode": "Coupon Code",
+    "applyCoupon": "Apply",
+    "couponApplied": "Coupon applied! {{discount}} off",
+    "summary": "Booking Summary",
+    "route": "Route",
+    "vehicle": "Vehicle",
+    "date": "Transfer Date",
+    "price": "Price",
+    "discount": "Discount",
+    "total": "Total Amount",
+    "proceedPayment": "Proceed to Payment",
+    "termsAgreement": "I agree to the terms of service",
+    "kvkkAgreement": "I consent to the processing of my personal data"
+  },
+  "payment": {
+    "title": "Payment",
+    "processing": "Processing payment...",
+    "secure": "Secured with 256-bit SSL",
+    "paytr": "Pay by card"
+  },
+  "confirmation": {
+    "success": "Your booking is confirmed!",
+    "bookingRef": "Booking Reference",
+    "emailSent": "Confirmation email sent",
+    "trackBooking": "Track booking",
+    "newBooking": "New booking"
+  },
+  "myBookings": {
+    "title": "My Bookings",
+    "empty": "You have no bookings yet",
+    "status": {
+      "PENDING": "Pending",
+      "CONFIRMED": "Confirmed",
+      "ASSIGNED": "Driver Assigned",
+      "EN_ROUTE": "En Route",
+      "COMPLETED": "Completed",
+      "CANCELLED": "Cancelled"
+    }
+  },
+  "errors": {
+    "required": "This field is required",
+    "email": "Please enter a valid email",
+    "phone": "Please enter a valid phone number",
+    "minLength": "At least {{min}} characters required",
+    "networkError": "Connection error, please try again"
+  }
+}
