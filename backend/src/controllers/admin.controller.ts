@@ -13,6 +13,8 @@ import {
   AdminUpsertIntegrationSchema,
   AdminCreateChildPriceRuleSchema,
   AdminUpdateUserProfileSchema,
+  AdminCreateExtraServiceSchema,
+  AdminUpdateExtraServiceSchema,
 } from '@transfer/shared';
 import * as adminService        from '../services/admin.service.js';
 import { sendTestEmail }        from '../services/notification.service.js';
@@ -230,6 +232,41 @@ export async function toggleCouponHandler(req: Request, res: Response, next: Nex
     const { isActive } = AdminSetActiveSchema.parse(req.body);
     const coupon       = await adminService.toggleCoupon(req.params.id as string, isActive);
     res.json({ coupon });
+  } catch (e) { next(e); }
+}
+
+// ─── Extra Services ──────────────────────────────────────────────────────────
+
+export async function listExtraServicesHandler(_req: Request, res: Response, next: NextFunction) {
+  try { res.json({ extras: await adminService.listExtraServices() }); } catch (e) { next(e); }
+}
+
+export async function createExtraServiceHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const input = AdminCreateExtraServiceSchema.parse(req.body);
+    const extra = await adminService.createExtraService(input);
+    res.status(201).json({ extra });
+  } catch (e) { next(e); }
+}
+
+export async function updateExtraServiceHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const input = AdminUpdateExtraServiceSchema.parse(req.body);
+    const extra = await adminService.updateExtraService(req.params.id as string, input);
+    res.json({ extra });
+  } catch (e) { next(e); }
+}
+
+export async function deleteExtraServiceHandler(req: Request, res: Response, next: NextFunction) {
+  try { await adminService.deleteExtraService(req.params.id as string); res.json({ ok: true }); } catch (e) { next(e); }
+}
+
+// ─── Flight Tracking (admin anlık sorgu) ──────────────────────────────────────
+
+export async function refreshBookingFlightHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const flightInfo = await adminService.refreshBookingFlight(req.params.id as string);
+    res.json({ flightInfo });
   } catch (e) { next(e); }
 }
 

@@ -40,7 +40,7 @@ async function assertDriverAvailable(driverId: string, transferDate: Date, exclu
 // ─── Şoför transferlerini listele ─────────────────────────────────────────────
 
 export async function getDriverAssignments(driverId: string, dateStr?: string) {
-  const where: Parameters<typeof prisma.driverAssignment.findMany>[0]['where'] = {
+  const where: NonNullable<Parameters<typeof prisma.driverAssignment.findMany>[0]>['where'] = {
     driverId,
     status: { notIn: ['COMPLETED'] },
   };

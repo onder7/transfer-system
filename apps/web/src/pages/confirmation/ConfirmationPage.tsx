@@ -98,11 +98,27 @@ export function ConfirmationPage() {
   const { t }  = useTranslation();
   const { id } = useParams<{ id: string }>();
   const [booking, setBooking] = useState<Booking | null>(null);
+  const [error, setError]     = useState('');
 
   useEffect(() => {
     if (!id) return;
-    api.get(`/bookings/${id}`).then(({ data }) => setBooking(data.booking));
+    api.get(`/bookings/${id}`)
+      .then(({ data }) => setBooking(data.booking))
+      .catch((e) => setError(e.response?.data?.error ?? 'Rezervasyon detayı yüklenemedi.'));
   }, [id]);
+
+  if (error) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <p className="text-5xl">⚠️</p>
+        <h2 className="mt-4 text-lg font-semibold text-gray-900">Detay görüntülenemedi</h2>
+        <p className="mt-2 text-sm text-gray-500">{error}</p>
+        <Link to="/booking-lookup" className="btn-primary mt-6 inline-block">
+          Rezervasyon Sorgula
+        </Link>
+      </div>
+    );
+  }
 
   if (!booking) {
     return (

@@ -7,6 +7,7 @@ import { BookingsPage }      from '@/pages/bookings/BookingsPage';
 import { DriversPage }       from '@/pages/drivers/DriversPage';
 import { PricingPage }       from '@/pages/pricing/PricingPage';
 import { CouponsPage }       from '@/pages/coupons/CouponsPage';
+import { ExtrasPage }        from '@/pages/extras/ExtrasPage';
 import { UsersPage }         from '@/pages/users/UsersPage';
 import { IntegrationsPage }   from '@/pages/integrations/IntegrationsPage';
 import { LocationsPage }      from '@/pages/locations/LocationsPage';
@@ -30,6 +31,7 @@ export function App() {
             <Route path="vehicles"     element={<VehiclesPage />} />
             <Route path="pricing"      element={<PricingPage />} />
             <Route path="coupons"      element={<CouponsPage />} />
+            <Route path="extras"       element={<ExtrasPage />} />
             <Route path="users"        element={<UsersPage />} />
             <Route path="integrations" element={<IntegrationsPage />} />
             <Route path="settings"     element={<SystemSettingsPage />} />

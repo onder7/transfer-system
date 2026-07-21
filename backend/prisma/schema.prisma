@@ -204,6 +204,7 @@ model Booking {
   flightInfo   FlightInfo?
   assignment   DriverAssignment?
   notifications Notification[]
+  extras        BookingExtra[]
 }
 
 model Payment {
@@ -290,6 +291,15 @@ model FlightInfo {
   actualAt     DateTime?    // gerçekleşen iniş
   status       FlightStatus @default(SCHEDULED)
   delayMinutes Int          @default(0)
+
+  // Güzergah bilgisi (bilgi amaçlı — ör. BFS Belfast (UTC +01:00) → AYT Antalya (UTC +03:00))
+  depIata      String?      // kalkış IATA (BFS)
+  depName      String?      // kalkış şehir/havalimanı (Belfast)
+  depUtcOffset String?      // "+01:00"
+  arrIata      String?      // varış IATA (AYT)
+  arrName      String?      // varış şehir/havalimanı (Antalya)
+  arrUtcOffset String?      // "+03:00"
+
   lastCheckedAt DateTime    @default(now())
 }
 
@@ -341,4 +351,40 @@ model IntegrationSetting {
   updatedBy  String?  // admin user id
   updatedAt  DateTime @updatedAt
   createdAt  DateTime @default(now())
+}
+
+// ─── Ekstra hizmetler (çocuk koltuğu, isimle karşılama vb.) ───────────────────
+// Fiyatları admin panelinden yönetilir; rezervasyona eklendiğinde birim fiyat
+// snapshot'ı BookingExtra'da saklanır (sonradan fiyat değişse bile kayıt korunur).
+model ExtraService {
+  id          String   @id @default(cuid())
+  key         String?  @unique // opsiyonel makine anahtarı (ör. name_greeting)
+  name        String
+  nameEn      String?
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  // FLAT = rezervasyon başı sabit, PER_PERSON = yolcu başı, PER_UNIT = adet başı
+  priceType   String   @default("PER_UNIT")
+  requiresNote Boolean @default(false) // ör. isimle karşılama → pano metni
+  maxQuantity Int      @default(4)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bookings    BookingExtra[]
+}
+
+model BookingExtra {
+  id             String       @id @default(cuid())
+  booking        Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId      String
+  extraService   ExtraService @relation(fields: [extraServiceId], references: [id])
+  extraServiceId String
+  quantity       Int          @default(1)
+  unitPrice      Decimal      @db.Decimal(10, 2) // eklendiği andaki birim fiyat
+  note           String?      // ör. karşılama panosuna yazılacak isim
+  createdAt      DateTime     @default(now())
+
+  @@index([bookingId])
 }

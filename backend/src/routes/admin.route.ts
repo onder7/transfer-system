@@ -39,6 +39,11 @@ import {
   listCouponsHandler,
   createCouponHandler,
   toggleCouponHandler,
+  listExtraServicesHandler,
+  createExtraServiceHandler,
+  updateExtraServiceHandler,
+  deleteExtraServiceHandler,
+  refreshBookingFlightHandler,
   listIntegrationsHandler,
   upsertIntegrationHandler,
   deleteIntegrationHandler,
@@ -110,6 +115,12 @@ adminRouter.get  ('/coupons',         listCouponsHandler);
 adminRouter.post ('/coupons',         createCouponHandler);
 adminRouter.patch('/coupons/:id/toggle', toggleCouponHandler);
 
+// ─── Extra Services ───────────────────────────────────────────────────────────
+adminRouter.get   ('/extras',     listExtraServicesHandler);
+adminRouter.post  ('/extras',     authorize('ADMIN'), createExtraServiceHandler);
+adminRouter.patch ('/extras/:id', authorize('ADMIN'), updateExtraServiceHandler);
+adminRouter.delete('/extras/:id', authorize('ADMIN'), deleteExtraServiceHandler);
+
 // ─── Child Price Rules ────────────────────────────────────────────────────────
 adminRouter.get   ('/child-price-rules',     listChildPriceRulesHandler);
 adminRouter.post  ('/child-price-rules',     authorize('ADMIN'), createChildPriceRuleHandler);
@@ -127,6 +138,9 @@ adminRouter.post  ('/bookings/:id/cancel',  auditLog('BOOKING_CANCELLED_ADMIN', 
 adminRouter.post  ('/bookings/:id/advance', auditLog('BOOKING_STATUS_ADVANCED',  'Booking'), advanceBookingStatusHandler);
 adminRouter.patch ('/bookings/:id/edit',    editBookingHandler);
 adminRouter.delete('/bookings/:id',         authorize('ADMIN'), auditLog('BOOKING_DELETED', 'Booking'), deleteBookingAdminHandler);
+
+// Uçuş takibi — anlık sorgu (AeroDataBox)
+adminRouter.post  ('/bookings/:id/flight',  refreshBookingFlightHandler);
 
 // ─── Sistem Ayarları ──────────────────────────────────────────────────────────
 adminRouter.get  ('/system-settings',        authorize('ADMIN'), getSystemSettingsHandler);

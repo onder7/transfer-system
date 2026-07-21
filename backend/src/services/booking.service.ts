@@ -149,6 +149,34 @@ export async function createBooking(
     price = +(price * 2 * (1 - disc)).toFixed(2);
   }
 
+  // 5b. Ekstra hizmetler — birim fiyatı DB'den al, client'a güvenme
+  const resolvedExtras: { extraServiceId: string; quantity: number; unitPrice: number; note?: string }[] = [];
+  if (data.extras?.length) {
+    const ids     = [...new Set(data.extras.map((e) => e.extraServiceId))];
+    const records = await prisma.extraService.findMany({ where: { id: { in: ids }, isActive: true } });
+    const byId    = new Map(records.map((r) => [r.id, r]));
+
+    for (const sel of data.extras) {
+      const svc = byId.get(sel.extraServiceId);
+      if (!svc) throw new AppError(404, 'Seçilen ekstra hizmet bulunamadı veya pasif');
+
+      const unit     = Number(svc.price);
+      const quantity =
+        svc.priceType === 'FLAT'       ? 1
+        : svc.priceType === 'PER_PERSON' ? totalPassengers
+        : Math.min(sel.quantity, svc.maxQuantity);
+
+      price += +(unit * quantity).toFixed(2);
+      resolvedExtras.push({
+        extraServiceId: svc.id,
+        quantity,
+        unitPrice: unit,
+        note: sel.note?.trim() || undefined,
+      });
+    }
+    price = +price.toFixed(2);
+  }
+
   // 4. Kupon
   let discountAmount = 0;
   let couponId: string | undefined;
@@ -192,6 +220,13 @@ export async function createBooking(
       },
       include: { fromLocation: true, toLocation: true },
     });
+
+    // Ekstra hizmet satırları (birim fiyat snapshot'lı)
+    if (resolvedExtras.length) {
+      await tx.bookingExtra.createMany({
+        data: resolvedExtras.map((e) => ({ ...e, bookingId: booking.id })),
+      });
+    }
 
     const payment = await tx.payment.create({
       data: {
@@ -272,7 +307,8 @@ export async function getBooking(id: string, userId?: string, isAdmin = false) {
     include: {
       fromLocation: true,
       toLocation:   true,
-      payment:      { select: { status: true, method: true, amount: true, refundAmount: true } },
+      // id gerekli: cancelBooking iade güncellemesinde payment.id kullanıyor
+      payment:      { select: { id: true, status: true, method: true, amount: true, refundAmount: true } },
       assignment:   { include: { driver: { select: { firstName: true, lastName: true, phone: true } } } },
       flightInfo:   true,
       customer:     { select: { email: true } },

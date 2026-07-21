@@ -43,14 +43,14 @@ export async function createVehicleHandler(req: Request, res: Response, next: Ne
 export async function updateVehicleHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const input = UpdateVehicleSchema.parse(req.body);
-    const vehicle = await updateVehicle(req.params.id, input);
+    const vehicle = await updateVehicle(req.params.id as string, input);
     res.json({ vehicle });
   } catch (err) { next(err); }
 }
 
 export async function deleteVehicleHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    const result = await deleteVehicle(req.params.id);
+    const result = await deleteVehicle(req.params.id as string);
     res.json(result);
   } catch (err) { next(err); }
 }

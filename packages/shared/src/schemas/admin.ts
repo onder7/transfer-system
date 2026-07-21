@@ -115,6 +115,25 @@ export const AdminCreateChildPriceRuleSchema = z.object({
 });
 export type AdminCreateChildPriceRuleInput = z.infer<typeof AdminCreateChildPriceRuleSchema>;
 
+// ─── ExtraService (ekstra hizmetler — çocuk koltuğu, isimle karşılama vb.) ─────
+
+export const AdminCreateExtraServiceSchema = z.object({
+  key:          z.string().min(1).optional().nullable(),
+  name:         z.string().min(2),
+  nameEn:       z.string().optional().nullable(),
+  description:  z.string().optional().nullable(),
+  price:        z.coerce.number().min(0),
+  priceType:    z.enum(['FLAT', 'PER_PERSON', 'PER_UNIT']).default('PER_UNIT'),
+  requiresNote: z.boolean().default(false),
+  maxQuantity:  z.coerce.number().int().min(1).max(20).default(4),
+  isActive:     z.boolean().default(true),
+  sortOrder:    z.coerce.number().int().default(0),
+});
+export type AdminCreateExtraServiceInput = z.infer<typeof AdminCreateExtraServiceSchema>;
+
+export const AdminUpdateExtraServiceSchema = AdminCreateExtraServiceSchema.partial();
+export type AdminUpdateExtraServiceInput = z.infer<typeof AdminUpdateExtraServiceSchema>;
+
 // ─── Integration ──────────────────────────────────────────────────────────────
 
 export const AdminUpsertIntegrationSchema = z.object({

@@ -333,7 +333,6 @@ export function DesignHomePage() {
       </section>
 
       <DesignHowItWorks />
-      <DesignFeatures />
 
       <section className="bg-gray-50 py-20 px-6" id="fleet">
         <div className="max-w-7xl mx-auto">
@@ -437,6 +436,8 @@ export function DesignHomePage() {
           </div>
         </div>
       </section>
+
+      <DesignFeatures />
 
       <DesignTestimonials />
 

@@ -9,11 +9,20 @@ interface Integration {
   updatedAt: string;
 }
 
-const SERVICE_LABELS: Record<string, { label: string; icon: string; secretFields: string[]; configFields: string[]; configHints?: Record<string, string> }> = {
+const SERVICE_LABELS: Record<string, { label: string; icon: string; provider?: string; providerOptions?: { value: string; label: string }[]; secretFields: string[]; configFields: string[]; configHints?: Record<string, string> }> = {
   paytr:         { label: 'PayTR Ödeme',       icon: '💳', secretFields: ['merchantKey', 'merchantSalt'], configFields: ['merchantId', 'callbackUrl', 'okUrl', 'failUrl', 'testMode'] },
   bank_transfer: { label: 'Havale / EFT',      icon: '🏦', secretFields: [], configFields: ['bankName', 'accountName', 'iban', 'branchCode', 'description'],
     configHints: { iban: 'TR00 0000 0000 0000 0000 0000 00', branchCode: 'Şube kodu (opsiyonel)', description: 'Müşteriye gösterilecek ek not' } },
-  aeroDataBox:   { label: 'AeroDataBox (Uçuş)', icon: '✈️', secretFields: ['rapidApiKey'], configFields: [] },
+  // service='flight' (backend getIntegration('flight') bunu arar). Sağlayıcı seçilebilir:
+  // aeroDataBox (RapidAPI) veya airlabs. İkisi de tek 'apiKey' secret'i kullanır;
+  // flight.service cfg.provider'a göre doğru API'yi çağırır.
+  flight:        { label: 'Uçuş Takibi', icon: '✈️', provider: 'aeroDataBox',
+    providerOptions: [
+      { value: 'aeroDataBox', label: 'AeroDataBox (RapidAPI)' },
+      { value: 'airlabs',     label: 'AirLabs' },
+    ],
+    secretFields: ['apiKey'], configFields: [],
+    configHints: { apiKey: 'Seçili sağlayıcının API anahtarı' } },
   netgsm:        { label: 'Netgsm (SMS)',        icon: '📱', secretFields: ['apiKey', 'apiSecret'], configFields: ['sender'] },
   whatsapp:      { label: 'WhatsApp (Meta)',     icon: '💬', secretFields: ['accessToken'], configFields: ['phoneNumberId', 'waBaId'] },
   smtp:          { label: 'E-posta (SMTP)',      icon: '📧', secretFields: ['password'], configFields: ['host', 'port', 'user', 'from'] },
@@ -86,7 +95,9 @@ function IntegrationCard({ item, onEdit }: { item: Integration; onEdit: () => vo
           <span className="text-2xl">{meta.icon}</span>
           <div>
             <h3 className="font-semibold text-gray-900">{meta.label}</h3>
-            <p className="text-xs text-gray-400">{item.service}</p>
+            <p className="text-xs text-gray-400">
+              {item.service}{('providerOptions' in meta && meta.providerOptions) ? ` · ${item.provider}` : ''}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -134,7 +145,7 @@ function EditModal({ item, onClose }: { item: Integration | { service: string };
   const meta = SERVICE_LABELS[svc] ?? { secretFields: [], configFields: [] };
 
   const [isActive, setIsActive] = useState('isActive' in item ? item.isActive : true);
-  const [provider] = useState('provider' in item ? item.provider : svc);
+  const [provider, setProvider] = useState('provider' in item ? item.provider : (meta.provider ?? svc));
   const [config,   setConfig]   = useState<Record<string, string>>(() => {
     if ('configJson' in item && item.configJson) {
       return Object.fromEntries(Object.entries(item.configJson).map(([k, v]) => [k, String(v)]));
@@ -171,6 +182,21 @@ function EditModal({ item, onClose }: { item: Integration | { service: string };
               onChange={(e) => setIsActive(e.target.checked)} />
             <label htmlFor="active" className="text-sm text-gray-700">Aktif</label>
           </div>
+
+          {meta.providerOptions && (
+            <div>
+              <label className="label">Sağlayıcı</label>
+              <select className="input" value={provider}
+                onChange={(e) => setProvider(e.target.value)}>
+                {meta.providerOptions.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-400">
+                Seçtiğiniz sağlayıcının API anahtarını aşağıya girin. Sağlayıcıyı değiştirdiyseniz anahtarı da güncelleyin.
+              </p>
+            </div>
+          )}
 
           {meta.configFields.map((field) => (
             <div key={field}>

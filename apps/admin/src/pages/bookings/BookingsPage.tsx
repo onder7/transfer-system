@@ -21,7 +21,39 @@ interface Booking {
   vehicleClass:  { id: string; name: string };
   payment:       { status: string; amount: number; currency: string; method: string } | null;
   assignment:    { status: string; vehiclePlate: string | null; driver: { firstName: string; lastName: string } | null } | null;
+  flightInfo:    FlightInfo | null;
 }
+
+interface FlightInfo {
+  status:        string;
+  delayMinutes:  number;
+  scheduledAt:   string;
+  estimatedAt:   string | null;
+  actualAt:      string | null;
+  lastCheckedAt: string;
+  depIata:       string | null;
+  depName:       string | null;
+  depUtcOffset:  string | null;
+  arrIata:       string | null;
+  arrName:       string | null;
+  arrUtcOffset:  string | null;
+}
+
+// "BFS Belfast (UTC +01:00)" biçiminde havalimanı etiketi
+function airportLabel(iata: string | null, name: string | null, offset: string | null) {
+  const parts = [iata, name].filter(Boolean).join(' ');
+  return offset ? `${parts} (UTC ${offset})` : parts;
+}
+
+const FLIGHT_STATUS: Record<string, { label: string; badge: string }> = {
+  SCHEDULED: { label: 'Planlandı', badge: 'badge-blue' },
+  DELAYED:   { label: 'Rötarlı',   badge: 'badge-yellow' },
+  LANDED:    { label: 'İndi',      badge: 'badge-green' },
+  CANCELLED: { label: 'İptal',     badge: 'badge-red' },
+};
+
+const fmtFlightTime = (s: string | null) =>
+  s ? new Date(s).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
 
 interface Driver  { id: string; firstName: string; lastName: string }
 interface Vehicle { id: string; plate: string; defaultDriver: Driver | null }
@@ -255,6 +287,18 @@ function EditBookingModal({ booking, onClose }: { booking: Booking; onClose: () 
 
   const editError = editMut.error ? getApiError(editMut.error) : null;
 
+  // ── Uçuş takibi ──
+  const [flightInfo, setFlightInfo] = useState<FlightInfo | null>(booking.flightInfo);
+  const flightMut = useMutation({
+    mutationFn: () =>
+      api.post<{ flightInfo: FlightInfo }>(`/admin/bookings/${booking.id}/flight`).then((r) => r.data),
+    onSuccess: (d) => {
+      setFlightInfo(d.flightInfo);
+      qc.invalidateQueries({ queryKey: ['admin', 'bookings'] });
+    },
+  });
+  const flightError = flightMut.error ? getApiError(flightMut.error) : null;
+
   function set(field: keyof EditForm) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -299,6 +343,56 @@ function EditBookingModal({ booking, onClose }: { booking: Booking; onClose: () 
               <label className="label text-gray-700">Uçuş No</label>
               <input className="input" value={form.flightNumber} onChange={set('flightNumber')} placeholder="TK123" />
             </div>
+          </div>
+
+          {/* ── Uçuş Takibi ── */}
+          <div className="rounded-xl border border-gray-200 p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-gray-700">✈️ Uçuş Takibi</span>
+              <button
+                type="button"
+                className="btn btn-outline text-xs px-3 py-1"
+                disabled={flightMut.isPending || !booking.flightNumber}
+                title={!booking.flightNumber ? 'Önce uçuş numarasını kaydedin' : 'AeroDataBox\'tan anlık sorgula'}
+                onClick={() => flightMut.mutate()}
+              >
+                {flightMut.isPending ? 'Sorgulanıyor…' : 'Uçuşu Sorgula'}
+              </button>
+            </div>
+
+            {flightInfo ? (
+              <div className="mt-3 space-y-1.5 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Durum</span>
+                  <span className={FLIGHT_STATUS[flightInfo.status]?.badge ?? 'badge-gray'}>
+                    {FLIGHT_STATUS[flightInfo.status]?.label ?? flightInfo.status}
+                    {flightInfo.delayMinutes > 0 ? ` · ${flightInfo.delayMinutes} dk rötar` : ''}
+                  </span>
+                </div>
+                {(flightInfo.depIata || flightInfo.arrIata) && (
+                  <div className="flex flex-col gap-0.5 border-b border-gray-100 pb-1.5">
+                    <span className="text-gray-500">Güzergah</span>
+                    <span className="font-medium text-gray-800">
+                      {airportLabel(flightInfo.depIata, flightInfo.depName, flightInfo.depUtcOffset)}
+                    </span>
+                    <span className="font-medium text-gray-800">
+                      → {airportLabel(flightInfo.arrIata, flightInfo.arrName, flightInfo.arrUtcOffset)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between"><span className="text-gray-500">Planlanan iniş</span><span className="font-medium">{fmtFlightTime(flightInfo.scheduledAt)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Tahmini iniş</span><span className="font-medium">{fmtFlightTime(flightInfo.estimatedAt)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Gerçekleşen iniş</span><span className="font-medium">{fmtFlightTime(flightInfo.actualAt)}</span></div>
+                <div className="flex justify-between text-xs text-gray-400 pt-1"><span>Son kontrol</span><span>{fmtFlightTime(flightInfo.lastCheckedAt)}</span></div>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-gray-400">
+                {booking.flightNumber
+                  ? 'Henüz uçuş verisi yok. "Uçuşu Sorgula" ile güncelleyin.'
+                  : 'Uçuş takibi için önce uçuş numarası girip kaydedin.'}
+              </p>
+            )}
+            {flightError && <p className="mt-2 text-xs text-red-600 bg-red-50 rounded-lg px-2 py-1.5">{flightError}</p>}
           </div>
 
           <div>
