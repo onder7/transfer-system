@@ -39,7 +39,7 @@ export function Navbar() {
               scrolled ? 'text-slate-900' : 'text-white'
             }`}
           >
-            Dalaman<span className="text-emerald-500">Transfer</span>
+            Sipahi<span className="text-emerald-500">VIP</span> Transfer
           </span>
         </Link>
 

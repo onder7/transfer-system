@@ -21,7 +21,7 @@ export function SiteFooter() {
                 <span className="text-white text-lg -rotate-45 inline-block">✈</span>
               </div>
               <span className="font-bold text-xl text-white">
-                Dalaman<span className="text-emerald-500">Transfer</span>
+                Sipahi<span className="text-emerald-500">VIP</span> Transfer
               </span>
             </div>
             <p className="text-white/50 text-sm leading-relaxed mb-6 max-w-xs">
@@ -31,11 +31,11 @@ export function SiteFooter() {
               <a href="tel:+902525551234" className="flex items-center gap-2 hover:text-emerald-400 transition-colors">
                 📞 +90 252 555 12 34
               </a>
-              <a href="mailto:info@dalamantransfer.com" className="flex items-center gap-2 hover:text-emerald-400 transition-colors">
-                ✉️ info@dalamantransfer.com
+              <a href="mailto:info@sipahiviptransfer.com" className="flex items-center gap-2 hover:text-emerald-400 transition-colors">
+                ✉️ info@sipahiviptransfer.com
               </a>
               <span className="flex items-center gap-2">
-                📍 Dalaman Havalimanı, Muğla
+                📍 Antalya & Muğla VIP Transfer
               </span>
             </div>
           </div>

@@ -20,7 +20,7 @@ export default function DesignFooter() {
                 <Plane size={18} className="text-white -rotate-45" />
               </div>
               <span className="font-bold text-xl text-white">
-                VIP<span className="text-emerald-500">Transfer</span>
+                Sipahi<span className="text-emerald-500">VIP</span> Transfer
               </span>
             </div>
             <p className="text-white/50 text-sm leading-relaxed mb-6 max-w-xs">{t.footerDesc}</p>
@@ -28,11 +28,11 @@ export default function DesignFooter() {
               <a href="tel:+902525551234" className="flex items-center gap-2 hover:text-emerald-400 transition-colors">
                 <Phone size={14} /> +90 252 555 12 34
               </a>
-              <a href="mailto:info@dalamantransfer.com" className="flex items-center gap-2 hover:text-emerald-400 transition-colors">
-                <Mail size={14} /> info@dalamantransfer.com
+              <a href="mailto:info@sipahiviptransfer.com" className="flex items-center gap-2 hover:text-emerald-400 transition-colors">
+                <Mail size={14} /> info@sipahiviptransfer.com
               </a>
               <span className="flex items-center gap-2">
-                <MapPin size={14} /> Dalaman Havalimanı, Muğla
+                <MapPin size={14} /> Antalya & Muğla VIP Transfer
               </span>
             </div>
           </div>

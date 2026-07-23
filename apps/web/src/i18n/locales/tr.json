@@ -22,9 +22,9 @@
   },
   "home": {
     "hero": {
-      "badge": "🏆 #1 Dalaman Transfer Hizmeti",
-      "title": "Dalaman Havalimanı Transfer",
-      "subtitle": "Güvenli, konforlu ve zamanında ulaşım hizmeti",
+      "badge": "🏆 #1 VIP Transfer Hizmeti",
+      "title": "Sipahi VIP Transfer",
+      "subtitle": "Güvenli, VIP konforlu ve zamanında ulaşım hizmeti",
       "cta": "Hemen Rezervasyon Yap"
     },
     "howItWorks": {
@@ -56,14 +56,14 @@
       "t3": { "name": "Michael T.", "role": "Kurumsal Müşteri", "text": "Şirketimizin tüm transfer ihtiyaçları için kullanıyoruz. Profesyonellik ve güvenilirlik bir arada." }
     },
     "footer": {
-      "desc": "Dalaman Havalimanı ve bölge otelleri arasında güvenilir, konforlu ve zamanında transfer hizmeti.",
+      "desc": "Havalimanı ve bölge otelleri arasında güvenilir, konforlu ve zamanında transfer hizmeti.",
       "servicesTitle": "HİZMETLER",
       "services": ["Havalimanı Transferi", "Otel Transferi", "Özel Transfer", "Grup Transferi"],
       "fleetTitle": "ARAÇ FİLOSU",
       "fleet": ["Sedan", "VIP Vito", "Minibüs", "Otobüs"],
       "companyTitle": "KURUMSAL",
       "company": ["Hakkımızda", "Blog", "İletişim", "Kariyer"],
-      "copyright": "© 2025 Dalaman Transfer. Tüm hakları saklıdır.",
+      "copyright": "© 2026 Sipahi VIP Transfer. Tüm hakları saklıdır.",
       "privacy": "Gizlilik Politikası",
       "terms": "Kullanım Koşulları"
     },

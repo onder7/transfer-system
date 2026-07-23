@@ -22,9 +22,9 @@
   },
   "home": {
     "hero": {
-      "badge": "🏆 #1 Rated Dalaman Transfer",
-      "title": "Dalaman Airport Transfer",
-      "subtitle": "Safe, comfortable and on-time airport transfer service",
+      "badge": "🏆 #1 Rated VIP Transfer",
+      "title": "Sipahi VIP Transfer",
+      "subtitle": "Safe, VIP comfortable and on-time transfer service",
       "cta": "Book Now"
     },
     "howItWorks": {
@@ -56,14 +56,14 @@
       "t3": { "name": "Michael T.", "role": "Corporate Client", "text": "We use them for all of our company's transfer needs. Professionalism and reliability combined." }
     },
     "footer": {
-      "desc": "Reliable, comfortable and on-time transfer service between Dalaman Airport and regional hotels.",
+      "desc": "Reliable, comfortable and on-time transfer service between airports and regional hotels.",
       "servicesTitle": "SERVICES",
       "services": ["Airport Transfer", "Hotel Transfer", "Private Transfer", "Group Transfer"],
       "fleetTitle": "OUR FLEET",
       "fleet": ["Sedan", "VIP Vito", "Minibus", "Coach"],
       "companyTitle": "COMPANY",
       "company": ["About Us", "Blog", "Contact", "Careers"],
-      "copyright": "© 2025 Dalaman Transfer. All rights reserved.",
+      "copyright": "© 2026 Sipahi VIP Transfer. All rights reserved.",
       "privacy": "Privacy Policy",
       "terms": "Terms of Service"
     },

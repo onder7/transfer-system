@@ -14,8 +14,8 @@ export default defineConfig({
       workbox: { importScripts: ['push-sw.js'] }, // Web Push handler'ları
       devOptions: { enabled: true },       // dev container'da da manifest/SW servis edilsin
       manifest: {
-        name: 'Dalaman Transfer',
-        short_name: 'Transfer',
+        name: 'Sipahi VIP Transfer',
+        short_name: 'Sipahi VIP',
         description: 'Havalimanı transfer rezervasyon ve şoför paneli',
         theme_color: '#0f172a',
         background_color: '#f1f5f9',

@@ -5,7 +5,7 @@ self.addEventListener('push', (event) => {
   let data = {};
   try { data = event.data ? event.data.json() : {}; } catch (_) { data = { body: event.data && event.data.text() }; }
 
-  const title = data.title || 'Dalaman Transfer';
+  const title = data.title || 'Sipahi VIP Transfer';
   const options = {
     body:  data.body || '',
     icon:  '/pwa-icon.svg',

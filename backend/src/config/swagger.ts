@@ -6,7 +6,7 @@ export const swaggerSpec = swaggerJsdoc({
     info: {
       title:   'Transfer API',
       version: '1.0.0',
-      description: 'Dalaman Havalimanı Transfer Yönetim Sistemi — REST API',
+      description: 'Sipahi VIP Transfer Yönetim Sistemi — REST API',
     },
     servers: [{ url: '/api', description: 'Local dev' }],
     components: {
