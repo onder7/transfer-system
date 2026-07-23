@@ -124,6 +124,9 @@ function PushNotificationBanner({ bookingId }: { bookingId: string }) {
     } else if (result.reason === 'denied') {
       setState('denied');
       setMsg('Bildirim izni reddedildi. Tarayıcı ayarlarından izin verebilirsiniz.');
+    } else if (result.reason === 'disabled') {
+      setState('error');
+      setMsg('Web Push bildirimleri henüz aktif edilmedi.');
     } else {
       setState('error');
       setMsg(result.message ?? 'Bildirim kurulumu başarısız oldu.');
