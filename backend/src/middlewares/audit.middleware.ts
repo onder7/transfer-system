@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../config/database.js';
 
 export function auditLog(action: string, entityType: string) {
@@ -11,7 +12,7 @@ export function auditLog(action: string, entityType: string) {
           action,
           entityType,
           entityId,
-          meta:       req.body as Record<string, unknown>,
+          meta:       req.body as Prisma.InputJsonValue,
           ip:         req.ip,
         },
       });

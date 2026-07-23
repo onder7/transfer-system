@@ -26,7 +26,9 @@ export const useAuthStore = create<AuthState>()(
       login: async (email, password) => {
         const { data } = await api.post('/auth/login', { email, password });
         if (!['ADMIN', 'OPERATOR'].includes(data.user?.role)) {
-          throw new Error('Bu panele erişim yetkiniz yok');
+          await api.post('/auth/logout').catch(() => {});
+          set({ user: null });
+          throw new Error('Bu panele yalnızca Admin veya Operatör hesapları giriş yapabilir.');
         }
         set({ user: data.user });
       },

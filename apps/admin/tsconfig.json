@@ -5,6 +5,9 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
+    // Vite derlemeyi üstlenir; tsc yalnızca tip denetimi yapar.
+    // Bu olmadan `tsc && vite build` derlenmiş .js dosyalarını src/ içine yazar.
+    "noEmit": true,
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

@@ -90,6 +90,11 @@ model Location {
   address   String?
   isActive  Boolean @default(true)
 
+  // Bağlı olduğu bölge (otel → bölge). Kendine referans; bölge silinirse NULL olur.
+  regionId String?
+  region   Location?  @relation("RegionChildren", fields: [regionId], references: [id], onDelete: SetNull)
+  children Location[] @relation("RegionChildren")
+
   fromPrices   PriceMatrix[] @relation("FromLocation")
   toPrices     PriceMatrix[] @relation("ToLocation")
   fromBookings Booking[]     @relation("BookingFrom")
@@ -176,6 +181,8 @@ model Booking {
   vehicleClass   VehicleClass @relation(fields: [vehicleClassId], references: [id])
   vehicleClassId String
   transferDate   DateTime
+  // Harita (OSRM) tahmini yolculuk süresi (dakika) — çakışma penceresi otomatik hesabında kullanılır
+  estimatedDurationMin Int?
   adultCount     Int      @default(1)
   childCount     Int      @default(0)
 
@@ -200,10 +207,20 @@ model Booking {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // ─── Gidiş-dönüş ───────────────────────────────────────────────────────────
+  // Dönüş bacağı AYRI bir Booking olarak oluşturulur (ters güzergah, kendi tarihi)
+  // ve gidiş bacağına bağlanır. Böylece dönüşe ayrı şoför/araç atanabilir ve
+  // çakışma kontrollerine girer. Ücret gidiş kaydında tutulur (tek Payment).
+  outboundId String?  @unique          // dolu ise BU KAYIT dönüş bacağıdır
+  outbound   Booking? @relation("RoundTrip", fields: [outboundId], references: [id], onDelete: Cascade)
+  returnLeg  Booking? @relation("RoundTrip")
+
   payment      Payment?
   flightInfo   FlightInfo?
   assignment   DriverAssignment?
   notifications Notification[]
+  extras        BookingExtra[]
+  pushSubscriptions PushSubscription[]
 }
 
 model Payment {
@@ -273,11 +290,26 @@ model DriverAssignment {
   vehicle        Vehicle?     @relation(fields: [vehicleId], references: [id])
   vehicleId      String?
   vehiclePlate   String?      // snapshot — araç silinse bile tarihsel kayıt korunur
-  status         String       @default("ASSIGNED") // ASSIGNED | EN_ROUTE | COMPLETED
+  status         String       @default("ASSIGNED") // ASSIGNED | EN_ROUTE | PICKED_UP | COMPLETED
   assignedAt     DateTime     @default(now())
+  pickedUpAt     DateTime?    // şoför "yolcuyu aldım" dediğinde — çakışma penceresi buradan başlar
   completedAt    DateTime?
 
   @@index([driverId])
+}
+
+// Web Push aboneliği — müşteri "bildirim al" deyince kaydedilir, booking'e bağlanır.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  bookingId String?                       // hangi rezervasyona bağlı (misafir takibi)
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique              // tarayıcı push endpoint'i (benzersiz)
+  p256dh    String                        // şifreleme anahtarı
+  auth      String                        // auth secret
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([bookingId])
 }
 
 model FlightInfo {
@@ -290,6 +322,15 @@ model FlightInfo {
   actualAt     DateTime?    // gerçekleşen iniş
   status       FlightStatus @default(SCHEDULED)
   delayMinutes Int          @default(0)
+
+  // Güzergah bilgisi (bilgi amaçlı — ör. BFS Belfast (UTC +01:00) → AYT Antalya (UTC +03:00))
+  depIata      String?      // kalkış IATA (BFS)
+  depName      String?      // kalkış şehir/havalimanı (Belfast)
+  depUtcOffset String?      // "+01:00"
+  arrIata      String?      // varış IATA (AYT)
+  arrName      String?      // varış şehir/havalimanı (Antalya)
+  arrUtcOffset String?      // "+03:00"
+
   lastCheckedAt DateTime    @default(now())
 }
 
@@ -341,4 +382,40 @@ model IntegrationSetting {
   updatedBy  String?  // admin user id
   updatedAt  DateTime @updatedAt
   createdAt  DateTime @default(now())
+}
+
+// ─── Ekstra hizmetler (çocuk koltuğu, isimle karşılama vb.) ───────────────────
+// Fiyatları admin panelinden yönetilir; rezervasyona eklendiğinde birim fiyat
+// snapshot'ı BookingExtra'da saklanır (sonradan fiyat değişse bile kayıt korunur).
+model ExtraService {
+  id          String   @id @default(cuid())
+  key         String?  @unique // opsiyonel makine anahtarı (ör. name_greeting)
+  name        String
+  nameEn      String?
+  description String?
+  price       Decimal  @db.Decimal(10, 2)
+  // FLAT = rezervasyon başı sabit, PER_PERSON = yolcu başı, PER_UNIT = adet başı
+  priceType   String   @default("PER_UNIT")
+  requiresNote Boolean @default(false) // ör. isimle karşılama → pano metni
+  maxQuantity Int      @default(4)
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  bookings    BookingExtra[]
+}
+
+model BookingExtra {
+  id             String       @id @default(cuid())
+  booking        Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId      String
+  extraService   ExtraService @relation(fields: [extraServiceId], references: [id])
+  extraServiceId String
+  quantity       Int          @default(1)
+  unitPrice      Decimal      @db.Decimal(10, 2) // eklendiği andaki birim fiyat
+  note           String?      // ör. karşılama panosuna yazılacak isim
+  createdAt      DateTime     @default(now())
+
+  @@index([bookingId])
 }

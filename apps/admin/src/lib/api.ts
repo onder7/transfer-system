@@ -45,7 +45,11 @@ api.interceptors.response.use(
       }
     }
 
-    if (err.response?.status === 401 && !window.location.pathname.startsWith('/admin/login')) {
+    if (
+      (err.response?.status === 401 || err.response?.status === 403) &&
+      !window.location.pathname.startsWith('/admin/login')
+    ) {
+      localStorage.removeItem('admin-auth');
       window.location.href = '/admin/login';
     }
 

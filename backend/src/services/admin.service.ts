@@ -3,6 +3,9 @@ import { redis }     from '../config/redis.js';
 import { AppError }  from '../middlewares/error.middleware.js';
 import { cancelBooking as bookingServiceCancel } from './booking.service.js';
 import { autoAssignBooking } from './driver.service.js';
+import { getIntegration, invalidateIntegrationCache } from './config.service.js';
+import { updateBookingFlight } from './flight.service.js';
+import type { ServiceKey } from './config.service.js';
 import { encrypt, decrypt } from '../utils/crypto.js';
 import { hashPassword }     from '../utils/password.js';
 import { invalidateLocationsCache, invalidateRoutesCache } from './location.service.js';
@@ -18,6 +21,8 @@ import type {
   AdminUpdateUserProfileInput,
   AdminCreateCouponInput,
   AdminUpsertIntegrationInput,
+  AdminCreateExtraServiceInput,
+  AdminUpdateExtraServiceInput,
 } from '@transfer/shared';
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
@@ -69,7 +74,7 @@ export async function listBookings(params: {
   const pageSize = params.pageSize ?? 20;
   const skip     = (page - 1) * pageSize;
 
-  const where: Parameters<typeof prisma.booking.findMany>[0]['where'] = {};
+  const where: NonNullable<Parameters<typeof prisma.booking.findMany>[0]>['where'] = {};
 
   if (params.status) where.status = params.status as any;
 
@@ -102,7 +107,11 @@ export async function listBookings(params: {
         toLocation:      { select: { name: true } },
         vehicleClass:    { select: { id: true, name: true } },
         payment:         { select: { status: true, amount: true, currency: true, method: true } },
-        assignment:      { select: { status: true, vehiclePlate: true, driver: { select: { firstName: true, lastName: true } } } },
+        assignment:      { select: { status: true, vehiclePlate: true, pickedUpAt: true, driver: { select: { firstName: true, lastName: true } } } },
+        flightInfo:      { select: { status: true, delayMinutes: true, scheduledAt: true, estimatedAt: true, actualAt: true, lastCheckedAt: true, depIata: true, depName: true, depUtcOffset: true, arrIata: true, arrName: true, arrUtcOffset: true } },
+        // Gidiş-dönüş bacak bağlantısı
+        returnLeg:       { select: { id: true, bookingRef: true, transferDate: true, status: true } },
+        outbound:        { select: { id: true, bookingRef: true, transferDate: true } },
       },
     }),
     prisma.booking.count({ where }),
@@ -541,6 +550,60 @@ export async function toggleCoupon(id: string, isActive: boolean) {
   return prisma.coupon.update({ where: { id }, data: { isActive } });
 }
 
+// ─── Ekstra hizmetler (çocuk koltuğu, isimle karşılama vb.) ───────────────────
+
+export async function listExtraServices() {
+  return prisma.extraService.findMany({
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
+    include: { _count: { select: { bookings: true } } },
+  });
+}
+
+export async function createExtraService(input: AdminCreateExtraServiceInput) {
+  return prisma.extraService.create({ data: input });
+}
+
+export async function updateExtraService(id: string, input: AdminUpdateExtraServiceInput) {
+  const exists = await prisma.extraService.findUnique({ where: { id } });
+  if (!exists) throw new AppError(404, 'Ekstra hizmet bulunamadı');
+  return prisma.extraService.update({ where: { id }, data: input });
+}
+
+export async function deleteExtraService(id: string) {
+  const used = await prisma.bookingExtra.count({ where: { extraServiceId: id } });
+  if (used > 0) {
+    // Geçmiş rezervasyonları koru — silmek yerine pasife çek
+    return prisma.extraService.update({ where: { id }, data: { isActive: false } });
+  }
+  return prisma.extraService.delete({ where: { id } });
+}
+
+// ─── Uçuş takibi — admin anlık sorgu ─────────────────────────────────────────
+
+export async function refreshBookingFlight(bookingId: string) {
+  const booking = await prisma.booking.findUnique({
+    where:  { id: bookingId },
+    select: { flightNumber: true },
+  });
+  if (!booking) throw new AppError(404, 'Rezervasyon bulunamadı');
+  if (!booking.flightNumber) {
+    throw new AppError(400, 'Bu rezervasyonda uçuş numarası tanımlı değil.');
+  }
+
+  const cfg = await getIntegration('flight');
+  if (!cfg) {
+    throw new AppError(400, 'Uçuş takip entegrasyonu (AeroDataBox) yapılandırılmamış veya pasif. Entegrasyonlar sayfasından ekleyin.');
+  }
+
+  await updateBookingFlight(bookingId);
+
+  const info = await prisma.flightInfo.findUnique({ where: { bookingId } });
+  if (!info) {
+    throw new AppError(404, `"${booking.flightNumber}" için bu tarihte uçuş verisi bulunamadı. Uçuş numarasını ve tarihi kontrol edin.`);
+  }
+  return info;
+}
+
 // ─── Entegrasyon ayarları ─────────────────────────────────────────────────────
 
 const SECRET_MASK = '••••••••';
@@ -579,8 +642,9 @@ export async function upsertIntegration(input: AdminUpsertIntegrationInput) {
 
   const existing = await prisma.integrationSetting.findUnique({ where: { service: input.service } });
 
+  let result;
   if (existing) {
-    return prisma.integrationSetting.update({
+    result = await prisma.integrationSetting.update({
       where: { service: input.service },
       data:  {
         provider:   input.provider ?? undefined,
@@ -591,18 +655,22 @@ export async function upsertIntegration(input: AdminUpsertIntegrationInput) {
       },
       select: { id: true, service: true, provider: true, isActive: true, updatedAt: true },
     });
+  } else {
+    result = await prisma.integrationSetting.create({
+      data: {
+        service:    input.service,
+        provider:   input.provider ?? '',
+        isActive:   input.isActive ?? true,
+        configJson: configJson ?? '{}',      // required field — boş config için {}
+        secretJson: secretJson ?? '',        // required field — secrets yoksa boş
+      },
+      select: { id: true, service: true, provider: true, isActive: true, updatedAt: true },
+    });
   }
 
-  return prisma.integrationSetting.create({
-    data: {
-      service:    input.service,
-      provider:   input.provider ?? '',
-      isActive:   input.isActive ?? true,
-      configJson: configJson ?? '{}',      // required field — boş config için {}
-      secretJson: secretJson ?? '',        // required field — secrets yoksa boş
-    },
-    select: { id: true, service: true, provider: true, isActive: true, updatedAt: true },
-  });
+  // Redis cache'i temizle → yeni provider/anahtar anında etkin olur
+  await invalidateIntegrationCache(input.service as ServiceKey);
+  return result;
 }
 
 export async function deleteIntegration(id: string) {

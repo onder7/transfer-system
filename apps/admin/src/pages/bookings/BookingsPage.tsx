@@ -20,8 +20,85 @@ interface Booking {
   toLocation:    { name: string };
   vehicleClass:  { id: string; name: string };
   payment:       { status: string; amount: number; currency: string; method: string } | null;
-  assignment:    { status: string; vehiclePlate: string | null; driver: { firstName: string; lastName: string } | null } | null;
+  assignment:    { status: string; vehiclePlate: string | null; pickedUpAt: string | null; driver: { firstName: string; lastName: string } | null } | null;
+  flightInfo:    FlightInfo | null;
+  returnFlight:  boolean;
+  estimatedDurationMin: number | null;
+  outboundId:    string | null;
+  returnLeg:     { id: string; bookingRef: string; transferDate: string; status: string } | null;
+  outbound:      { id: string; bookingRef: string; transferDate: string } | null;
 }
+
+const fmtLegDate = (s: string) =>
+  new Date(s).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+// Atama (takip) durumu — şoför iş akışı
+const ASSIGN_STATUS: Record<string, { label: string; badge: string }> = {
+  ASSIGNED:  { label: 'Atandı',        badge: 'badge-blue' },
+  EN_ROUTE:  { label: 'Yola Çıktı',    badge: 'badge-yellow' },
+  PICKED_UP: { label: 'Yolcu Alındı',  badge: 'badge-green' },
+  COMPLETED: { label: 'Tamamlandı',    badge: 'badge-gray' },
+};
+
+// Harita tahmini süreyi okunur biçime çevir (97 → "1 sa 37 dk")
+function fmtDuration(min: number | null): string {
+  if (min == null) return '—';
+  if (min < 60) return `${min} dk`;
+  const h = Math.floor(min / 60), m = min % 60;
+  return m ? `${h} sa ${m} dk` : `${h} sa`;
+}
+
+// Gidiş / dönüş bacağı rozeti
+function LegBadge({ b }: { b: Booking }) {
+  if (b.outboundId) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md bg-indigo-100 px-1.5 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-200"
+        title={b.outbound ? `Gidiş: ${b.outbound.bookingRef.slice(-8)} · ${fmtLegDate(b.outbound.transferDate)}` : undefined}>
+        ↩ DÖNÜŞ
+      </span>
+    );
+  }
+  if (b.returnLeg) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200"
+        title={`Dönüş: ${b.returnLeg.bookingRef.slice(-8)} · ${fmtLegDate(b.returnLeg.transferDate)}`}>
+        ⇄ GİDİŞ
+      </span>
+    );
+  }
+  return null;
+}
+
+interface FlightInfo {
+  status:        string;
+  delayMinutes:  number;
+  scheduledAt:   string;
+  estimatedAt:   string | null;
+  actualAt:      string | null;
+  lastCheckedAt: string;
+  depIata:       string | null;
+  depName:       string | null;
+  depUtcOffset:  string | null;
+  arrIata:       string | null;
+  arrName:       string | null;
+  arrUtcOffset:  string | null;
+}
+
+// "BFS Belfast (UTC +01:00)" biçiminde havalimanı etiketi
+function airportLabel(iata: string | null, name: string | null, offset: string | null) {
+  const parts = [iata, name].filter(Boolean).join(' ');
+  return offset ? `${parts} (UTC ${offset})` : parts;
+}
+
+const FLIGHT_STATUS: Record<string, { label: string; badge: string }> = {
+  SCHEDULED: { label: 'Planlandı', badge: 'badge-blue' },
+  DELAYED:   { label: 'Rötarlı',   badge: 'badge-yellow' },
+  LANDED:    { label: 'İndi',      badge: 'badge-green' },
+  CANCELLED: { label: 'İptal',     badge: 'badge-red' },
+};
+
+const fmtFlightTime = (s: string | null) =>
+  s ? new Date(s).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
 
 interface Driver  { id: string; firstName: string; lastName: string }
 interface Vehicle { id: string; plate: string; defaultDriver: Driver | null }
@@ -112,7 +189,11 @@ function AssignModal({ booking, onClose }: { booking: Booking; onClose: () => vo
     queryKey: ['admin', 'vehicles-available', booking.vehicleClass.id, booking.transferDate],
     queryFn:  () =>
       api.get<{ vehicles: Vehicle[] }>('/admin/vehicles/available', {
-        params: { vehicleClassId: booking.vehicleClass.id, transferDate: booking.transferDate },
+        params: {
+          vehicleClassId: booking.vehicleClass.id,
+          transferDate: booking.transferDate,
+          ...(booking.estimatedDurationMin != null ? { estimatedDurationMin: booking.estimatedDurationMin } : {}),
+        },
       }).then((r) => r.data),
   });
 
@@ -255,6 +336,18 @@ function EditBookingModal({ booking, onClose }: { booking: Booking; onClose: () 
 
   const editError = editMut.error ? getApiError(editMut.error) : null;
 
+  // ── Uçuş takibi ──
+  const [flightInfo, setFlightInfo] = useState<FlightInfo | null>(booking.flightInfo);
+  const flightMut = useMutation({
+    mutationFn: () =>
+      api.post<{ flightInfo: FlightInfo }>(`/admin/bookings/${booking.id}/flight`).then((r) => r.data),
+    onSuccess: (d) => {
+      setFlightInfo(d.flightInfo);
+      qc.invalidateQueries({ queryKey: ['admin', 'bookings'] });
+    },
+  });
+  const flightError = flightMut.error ? getApiError(flightMut.error) : null;
+
   function set(field: keyof EditForm) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -299,6 +392,56 @@ function EditBookingModal({ booking, onClose }: { booking: Booking; onClose: () 
               <label className="label text-gray-700">Uçuş No</label>
               <input className="input" value={form.flightNumber} onChange={set('flightNumber')} placeholder="TK123" />
             </div>
+          </div>
+
+          {/* ── Uçuş Takibi ── */}
+          <div className="rounded-xl border border-gray-200 p-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-gray-700">✈️ Uçuş Takibi</span>
+              <button
+                type="button"
+                className="btn btn-outline text-xs px-3 py-1"
+                disabled={flightMut.isPending || !booking.flightNumber}
+                title={!booking.flightNumber ? 'Önce uçuş numarasını kaydedin' : 'AeroDataBox\'tan anlık sorgula'}
+                onClick={() => flightMut.mutate()}
+              >
+                {flightMut.isPending ? 'Sorgulanıyor…' : 'Uçuşu Sorgula'}
+              </button>
+            </div>
+
+            {flightInfo ? (
+              <div className="mt-3 space-y-1.5 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Durum</span>
+                  <span className={FLIGHT_STATUS[flightInfo.status]?.badge ?? 'badge-gray'}>
+                    {FLIGHT_STATUS[flightInfo.status]?.label ?? flightInfo.status}
+                    {flightInfo.delayMinutes > 0 ? ` · ${flightInfo.delayMinutes} dk rötar` : ''}
+                  </span>
+                </div>
+                {(flightInfo.depIata || flightInfo.arrIata) && (
+                  <div className="flex flex-col gap-0.5 border-b border-gray-100 pb-1.5">
+                    <span className="text-gray-500">Güzergah</span>
+                    <span className="font-medium text-gray-800">
+                      {airportLabel(flightInfo.depIata, flightInfo.depName, flightInfo.depUtcOffset)}
+                    </span>
+                    <span className="font-medium text-gray-800">
+                      → {airportLabel(flightInfo.arrIata, flightInfo.arrName, flightInfo.arrUtcOffset)}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between"><span className="text-gray-500">Planlanan iniş</span><span className="font-medium">{fmtFlightTime(flightInfo.scheduledAt)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Tahmini iniş</span><span className="font-medium">{fmtFlightTime(flightInfo.estimatedAt)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Gerçekleşen iniş</span><span className="font-medium">{fmtFlightTime(flightInfo.actualAt)}</span></div>
+                <div className="flex justify-between text-xs text-gray-400 pt-1"><span>Son kontrol</span><span>{fmtFlightTime(flightInfo.lastCheckedAt)}</span></div>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-gray-400">
+                {booking.flightNumber
+                  ? 'Henüz uçuş verisi yok. "Uçuşu Sorgula" ile güncelleyin.'
+                  : 'Uçuş takibi için önce uçuş numarası girip kaydedin.'}
+              </p>
+            )}
+            {flightError && <p className="mt-2 text-xs text-red-600 bg-red-50 rounded-lg px-2 py-1.5">{flightError}</p>}
           </div>
 
           <div>
@@ -544,7 +687,18 @@ export function BookingsPage() {
                       }`}
                     >
                       <td className="px-4 py-3 font-mono text-xs text-brand-600">
-                        {b.bookingRef.slice(-8)}
+                        <div>{b.bookingRef.slice(-8)}</div>
+                        <LegBadge b={b} />
+                        {b.returnLeg && (
+                          <div className="mt-0.5 font-sans text-[11px] text-gray-400">
+                            dönüş: {fmtLegDate(b.returnLeg.transferDate)}
+                          </div>
+                        )}
+                        {b.outbound && (
+                          <div className="mt-0.5 font-sans text-[11px] text-gray-400">
+                            gidiş: {fmtLegDate(b.outbound.transferDate)}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div>{b.guestName ?? '—'}</div>
@@ -567,7 +721,7 @@ export function BookingsPage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-500">
                         {b.assignment ? (
-                          <div>
+                          <div className="space-y-1">
                             <div className="font-medium text-gray-700">
                               {b.assignment.driver
                                 ? `${b.assignment.driver.firstName} ${b.assignment.driver.lastName}`
@@ -576,10 +730,23 @@ export function BookingsPage() {
                             {b.assignment.vehiclePlate && (
                               <div className="font-mono text-gray-400">{b.assignment.vehiclePlate}</div>
                             )}
+                            {/* Takip durumu (şoför iş akışı) */}
+                            <span className={ASSIGN_STATUS[b.assignment.status]?.badge ?? 'badge-gray'}>
+                              {ASSIGN_STATUS[b.assignment.status]?.label ?? b.assignment.status}
+                            </span>
+                            {b.assignment.pickedUpAt && (
+                              <div className="text-[11px] text-emerald-600">
+                                🧍 alındı: {fmtLegDate(b.assignment.pickedUpAt)}
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <span className="text-gray-300">—</span>
                         )}
+                        {/* Harita tahmini yolculuk süresi */}
+                        <div className="mt-1 text-[11px] text-gray-400" title="Haritadan (OSRM) otomatik hesaplanan tahmini yolculuk süresi — çakışma penceresinde kullanılır">
+                          🗺️ ~{fmtDuration(b.estimatedDurationMin)}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">

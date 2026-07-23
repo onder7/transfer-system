@@ -1,4 +1,5 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RootLayout }        from '@/components/layout/RootLayout';
 import { DesignHomePage }    from '@/design/pages/DesignHomePage';
@@ -10,6 +11,9 @@ import { LoginPage }         from '@/pages/auth/LoginPage';
 import { RegisterPage }      from '@/pages/auth/RegisterPage';
 import { MyBookingsPage }      from '@/pages/myBookings/MyBookingsPage';
 import { BookingLookupPage }  from '@/pages/bookingLookup/BookingLookupPage';
+import { DriverLayout }       from '@/pages/driver/DriverLayout';
+import { DriverDashboard }    from '@/pages/driver/DriverDashboard';
+import { TrackingPage }        from '@/pages/tracking/TrackingPage';
 
 
 const qc = new QueryClient({
@@ -18,11 +22,31 @@ const qc = new QueryClient({
   },
 });
 
+/**
+ * Sayfa değişiminde en üste kaydırır.
+ * Ana sayfada aşağıdaki filodan "Ödemeye Geç" denince /booking sayfası
+ * önceki kaydırma konumunda açılıyordu; bu onu engeller.
+ */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
+  return null;
+}
+
 export function App() {
   return (
     <QueryClientProvider client={qc}>
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
+          {/* Şoför PWA — müşteri kabuğundan bağımsız, tam ekran mobil */}
+          <Route path="/surucu" element={<DriverLayout />}>
+            <Route index element={<DriverDashboard />} />
+          </Route>
+
+          {/* Müşteri canlı takip haritası — tam ekran, bağımsız layout */}
+          <Route path="/tracking/:bookingId" element={<TrackingPage />} />
+
           <Route element={<RootLayout />}>
             <Route index            element={<DesignHomePage />} />
             <Route path="search"    element={<SearchPage />} />

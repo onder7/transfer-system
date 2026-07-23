@@ -268,6 +268,10 @@ export function DesignHomePage() {
     sp.set('adultCount', String(searchParams.adultCount));
     sp.set('childCount', String(searchParams.childCount));
     sp.set('returnFlight', searchParams.tripType === 'round-trip' ? 'true' : 'false');
+    // Dönüş tarihi/saati de aktarılmalı — aksi halde dönüş bacağı planlanamıyor
+    if (searchParams.tripType === 'round-trip' && searchParams.returnDate) {
+      sp.set('returnDate', toIsoDateTime(searchParams.returnDate, searchParams.returnTime));
+    }
     if (searchParams.flightNo) sp.set('flightNumber', searchParams.flightNo);
     sp.set('vehicleClassId', booking.selectedVehicleId);
     
@@ -333,7 +337,6 @@ export function DesignHomePage() {
       </section>
 
       <DesignHowItWorks />
-      <DesignFeatures />
 
       <section className="bg-gray-50 py-20 px-6" id="fleet">
         <div className="max-w-7xl mx-auto">
@@ -437,6 +440,8 @@ export function DesignHomePage() {
           </div>
         </div>
       </section>
+
+      <DesignFeatures />
 
       <DesignTestimonials />
 

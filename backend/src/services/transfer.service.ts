@@ -128,9 +128,14 @@ export async function searchTransfers(input: SearchTransferInput) {
           : null;
       }
 
-      const returnDisc  = Number(p.returnDiscount) / 100;
+      const returnDisc = Number(p.returnDiscount) / 100;
+      // Gidiş-dönüş TOPLAMI — booking.service.createBooking ile birebir aynı formül
+      const roundTripTotal = +(unitPrice * 2 * (1 - returnDisc)).toFixed(2);
+      // returnPrice = dönüş bacağının EK ücreti. Tüketiciler (web formu, özet kartı,
+      // arama listesi) bunu gidiş fiyatına EKLER; böylece price + returnPrice === tahsil
+      // edilen toplam olur. Toplamı doğrudan dönmek 3 kat fiyata yol açıyordu.
       const returnPrice = input.returnFlight
-        ? +(unitPrice * 2 * (1 - returnDisc)).toFixed(2)
+        ? +(roundTripTotal - unitPrice).toFixed(2)
         : null;
 
       return {

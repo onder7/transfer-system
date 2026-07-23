@@ -128,6 +128,39 @@ async function main() {
     },
   });
 
+  // Ekstra hizmetler (admin panelinden fiyatları yönetilir)
+  await prisma.extraService.upsert({
+    where:  { key: 'child_seat' },
+    update: {},
+    create: {
+      key:         'child_seat',
+      name:        'Çocuk Koltuğu',
+      nameEn:      'Child Seat',
+      description: 'Bebek / çocuk güvenlik koltuğu (adet başı)',
+      price:       150,
+      priceType:   'PER_UNIT',
+      maxQuantity: 4,
+      sortOrder:   1,
+      isActive:    true,
+    },
+  });
+  await prisma.extraService.upsert({
+    where:  { key: 'name_greeting' },
+    update: {},
+    create: {
+      key:          'name_greeting',
+      name:         'İsimle Karşılama',
+      nameEn:       'Name Sign Meet & Greet',
+      description:  'Şoförün isminizin yazılı olduğu pano ile karşılaması',
+      price:        200,
+      priceType:    'FLAT',
+      requiresNote: true,
+      maxQuantity:  1,
+      sortOrder:    2,
+      isActive:     true,
+    },
+  });
+
   console.log('✅ Seed tamamlandı');
 }
 

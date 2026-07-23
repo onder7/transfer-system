@@ -7,6 +7,7 @@ import {
   getPaymentHandler,
   iframeTokenHandler,
   bankInfoHandler,
+  paymentMethodsHandler,
   bankTransferHandler,
   cashPaymentHandler,
 } from '../controllers/payment.controller.js';
@@ -15,6 +16,9 @@ export const paymentRouter = Router();
 
 // Banka bilgileri — PUBLIC (PaymentPage'de gösterilir)
 paymentRouter.get('/bank-info', bankInfoHandler);
+
+// Aktif ödeme yöntemleri — PUBLIC (rezervasyon formunda kullanılır)
+paymentRouter.get('/methods', paymentMethodsHandler);
 
 // PayTR iframe token
 paymentRouter.post('/checkout', checkoutHandler);

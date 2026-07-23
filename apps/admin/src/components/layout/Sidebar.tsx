@@ -16,6 +16,7 @@ const NAV: NavItem[] = [
   { to: '/vehicles',     icon: '🚗', label: 'Araçlar' },
   { to: '/pricing',      icon: '💰', label: 'Fiyatlandırma' },
   { to: '/coupons',      icon: '🎟️', label: 'Kuponlar' },
+  { to: '/extras',       icon: '➕', label: 'Ekstra Hizmetler', adminOnly: true },
   { to: '/users',        icon: '👥', label: 'Kullanıcılar',   adminOnly: true },
   { to: '/integrations', icon: '🔌', label: 'Entegrasyonlar', adminOnly: true },
   { to: '/settings',     icon: '⚙️', label: 'Sistem Ayarları', adminOnly: true },

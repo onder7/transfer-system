@@ -1,46 +1,84 @@
 import { prisma }            from '../config/database.js';
 import { AppError }          from '../middlewares/error.middleware.js';
 import { queueNotification } from './notification.service.js';
+import { sendToBooking }     from './push.service.js';
 import { logger }            from '../config/logger.js';
 import type { AssignDriverInput } from '@transfer/shared';
 
-// ─── Müsaitlik kontrolü — çakışma/overlap ────────────────────────────────────
+// ─── Müsaitlik kontrolü — harita-tahmini + yolcu-alma anası ──────────────────
+//
+// Eski sistem: sabit ±120 dk (elle "araç dönüş süresi"). Yeni sistem: her transferin
+// meşguliyet penceresi = [transferDate − pay,  yolcuAlmaAnı + tahmini süre + pay].
+//   • tahmini süre  → harita (OSRM) tahmini, Booking.estimatedDurationMin
+//   • yolcuAlmaAnı  → şoför "yolcuyu aldım" dediyse gerçek pickedUpAt, yoksa planlanan transferDate
+//   • pay           → sabit temizlik/hazırlık payı (vehicle_turnaround_minutes)
+// İki transfer, pencereleri örtüşürse çakışır (aralık kesişimi).
 
-async function getBufferMs(): Promise<number> {
+const DEFAULT_TRIP_MIN = 60; // estimatedDurationMin yoksa güvenli varsayılan
+
+interface WindowBooking { transferDate: Date; estimatedDurationMin: number | null; }
+interface WindowAssignment { pickedUpAt: Date | null; }
+
+async function getMarginMin(): Promise<number> {
   const s = await prisma.systemSetting.findUnique({ where: { key: 'vehicle_turnaround_minutes' } });
-  return (s ? Number(s.value) : 120) * 60_000;
+  return s ? Number(s.value) : 20;
 }
 
-async function assertDriverAvailable(driverId: string, transferDate: Date, excludeBookingId?: string) {
-  const bufferMs = await getBufferMs();
-  const from = new Date(transferDate.getTime() - bufferMs);
-  const to   = new Date(transferDate.getTime() + bufferMs);
+function blockWindow(b: WindowBooking, marginMs: number, a?: WindowAssignment) {
+  const travelMs = (b.estimatedDurationMin ?? DEFAULT_TRIP_MIN) * 60_000;
+  const anchor   = (a?.pickedUpAt ?? b.transferDate).getTime(); // yolcu alındıysa gerçek an
+  return {
+    start: b.transferDate.getTime() - marginMs,          // araca varış payı (planlanan)
+    end:   anchor + travelMs + marginMs,                 // bırakma + temizlik payı
+  };
+}
 
-  const conflict = await prisma.driverAssignment.findFirst({
+// kind'a göre (şoför/araç) çakışan atamayı bulur; varsa 409 fırlatır
+async function assertResourceAvailable(
+  kind: 'driver' | 'vehicle',
+  resourceId: string,
+  newBooking: WindowBooking,
+  excludeBookingId?: string,
+) {
+  const marginMs = (await getMarginMin()) * 60_000;
+  const w = blockWindow(newBooking, marginMs);
+
+  // Kaba DB penceresi (satır sayısını sınırlamak için ±12s); kesin örtüşme JS'te
+  const coarseFrom = new Date(w.start - 12 * 3600_000);
+  const coarseTo   = new Date(w.end   + 12 * 3600_000);
+
+  const candidates = await prisma.driverAssignment.findMany({
     where: {
-      driverId,
-      status: { in: ['ASSIGNED', 'EN_ROUTE'] },
+      ...(kind === 'driver' ? { driverId: resourceId } : { vehicleId: resourceId }),
+      status: { in: ['ASSIGNED', 'EN_ROUTE', 'PICKED_UP'] },
       booking: {
         status:      { notIn: ['CANCELLED', 'COMPLETED'] },
-        transferDate: { gte: from, lte: to },
+        transferDate: { gte: coarseFrom, lte: coarseTo },
         id:          excludeBookingId ? { not: excludeBookingId } : undefined,
       },
     },
-    include: { booking: { select: { transferDate: true, bookingRef: true } } },
+    include: { booking: { select: { transferDate: true, estimatedDurationMin: true, bookingRef: true } } },
   });
 
-  if (conflict) {
-    throw new AppError(
-      409,
-      `Şoför bu zaman aralığında meşgul (${conflict.booking.bookingRef} — ${conflict.booking.transferDate.toLocaleString('tr-TR')})`,
-    );
+  for (const c of candidates) {
+    const cw = blockWindow(c.booking, marginMs, { pickedUpAt: c.pickedUpAt });
+    if (w.start < cw.end && cw.start < w.end) {           // aralık kesişimi
+      const label = kind === 'driver' ? 'Şoför' : 'Araç';
+      throw new AppError(
+        409,
+        `${label} bu zaman aralığında meşgul (${c.booking.bookingRef.slice(-8)} — ${c.booking.transferDate.toLocaleString('tr-TR')})`,
+      );
+    }
   }
 }
+
+const assertDriverAvailable  = (driverId: string,  b: WindowBooking, ex?: string) => assertResourceAvailable('driver',  driverId,  b, ex);
+const assertVehicleAvailable = (vehicleId: string, b: WindowBooking, ex?: string) => assertResourceAvailable('vehicle', vehicleId, b, ex);
 
 // ─── Şoför transferlerini listele ─────────────────────────────────────────────
 
 export async function getDriverAssignments(driverId: string, dateStr?: string) {
-  const where: Parameters<typeof prisma.driverAssignment.findMany>[0]['where'] = {
+  const where: NonNullable<Parameters<typeof prisma.driverAssignment.findMany>[0]>['where'] = {
     driverId,
     status: { notIn: ['COMPLETED'] },
   };
@@ -118,15 +156,17 @@ export async function getAssignmentDetail(assignmentId: string, driverId: string
 
 // ─── Statü güncelleme (şoför mobil arayüzünden) ───────────────────────────────
 
+// Şoför iş akışı: Atandı → Yola Çıktı → Yolcuyu Aldı → Tamamlandı
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
   ASSIGNED:  ['EN_ROUTE'],
-  EN_ROUTE:  ['COMPLETED'],
+  EN_ROUTE:  ['PICKED_UP'],
+  PICKED_UP: ['COMPLETED'],
 };
 
 export async function updateAssignmentStatus(
   assignmentId: string,
   driverId: string,
-  newStatus: 'EN_ROUTE' | 'COMPLETED',
+  newStatus: 'EN_ROUTE' | 'PICKED_UP' | 'COMPLETED',
 ) {
   const assignment = await prisma.driverAssignment.findUnique({
     where:   { id: assignmentId },
@@ -146,33 +186,58 @@ export async function updateAssignmentStatus(
       where: { id: assignmentId },
       data:  {
         status:      newStatus,
-        completedAt: newStatus === 'COMPLETED' ? new Date() : undefined,
+        // "Yolcuyu aldım" → gerçek pickup anı; çakışma penceresi buradan hesaplanır
+        pickedUpAt:  newStatus === 'PICKED_UP'  ? new Date() : undefined,
+        completedAt: newStatus === 'COMPLETED'  ? new Date() : undefined,
       },
     });
 
-    // Booking statüsünü eşle
-    const bookingStatus = newStatus === 'EN_ROUTE' ? 'EN_ROUTE' : 'COMPLETED';
+    // Booking statüsünü eşle (PICKED_UP → booking hâlâ EN_ROUTE)
+    const bookingStatus = newStatus === 'COMPLETED' ? 'COMPLETED' : 'EN_ROUTE';
     await tx.booking.update({
       where: { id: assignment.bookingId },
       data:  { status: bookingStatus },
     });
   });
 
-  // Yolda → müşteriye bildir
+  // Müşteri bildirimi — SMS + Web Push
+  const phone = assignment.booking.guestPhone;
+  const ref   = assignment.booking.bookingRef;
+  const trackUrl = `/confirmation/${assignment.bookingId}`;
+
   if (newStatus === 'EN_ROUTE') {
-    const phone = assignment.booking.guestPhone;
-    if (phone) {
-      await queueNotification({
-        bookingId: assignment.bookingId,
-        channel:   'SMS',
-        recipient:  phone,
-        body:      `Şoförünüz yola çıktı. Rezervasyon: ${assignment.booking.bookingRef}`,
-      });
-    }
+    if (phone) await queueNotification({ bookingId: assignment.bookingId, channel: 'SMS', recipient: phone, body: `Şoförünüz yola çıktı. Rezervasyon: ${ref}` });
+    void sendToBooking(assignment.bookingId, { title: '🚗 Şoförünüz yola çıktı', body: 'Transferiniz için şoförünüz yola çıktı.', url: trackUrl, tag: 'transfer' });
+  } else if (newStatus === 'PICKED_UP') {
+    if (phone) await queueNotification({ bookingId: assignment.bookingId, channel: 'SMS', recipient: phone, body: `Transferiniz başladı, iyi yolculuklar! Rezervasyon: ${ref}` });
+    void sendToBooking(assignment.bookingId, { title: '🧍 Transferiniz başladı', body: 'İyi yolculuklar dileriz!', url: trackUrl, tag: 'transfer' });
   }
 
   logger.info({ assignmentId, newStatus }, 'Atama statüsü güncellendi');
   return { ok: true, status: newStatus };
+}
+
+// Şoför "yaklaştım/kapıdayım" der → müşteriye push (durum değişmez)
+export async function notifyApproaching(assignmentId: string, driverId: string) {
+  const assignment = await prisma.driverAssignment.findUnique({
+    where:   { id: assignmentId },
+    include: { booking: { select: { id: true, bookingRef: true, guestPhone: true } } },
+  });
+  if (!assignment) throw new AppError(404, 'Atama bulunamadı');
+  if (assignment.driverId !== driverId) throw new AppError(403, 'Yetki yok');
+  if (assignment.status !== 'EN_ROUTE') throw new AppError(400, 'Yaklaşma bildirimi yalnızca yola çıktıktan sonra gönderilebilir');
+
+  const b = assignment.booking;
+  const sent = await sendToBooking(b.id, {
+    title: '📍 Şoförünüz yaklaştı',
+    body:  'Şoförünüz buluşma noktasına yaklaştı. Lütfen hazır olun.',
+    url:   `/confirmation/${b.id}`,
+    tag:   'transfer',
+  });
+  if (b.guestPhone) {
+    await queueNotification({ bookingId: b.id, channel: 'SMS', recipient: b.guestPhone, body: `Şoförünüz yaklaştı, lütfen hazır olun. Rezervasyon: ${b.bookingRef}` });
+  }
+  return { ok: true, pushSent: sent };
 }
 
 // ─── Admin: şoför ata ─────────────────────────────────────────────────────────
@@ -188,8 +253,8 @@ export async function assignDriver(
     throw new AppError(400, `${booking.status} durumundaki rezervasyona şoför atanamaz`);
   }
 
-  // Müsaitlik kontrolü
-  await assertDriverAvailable(input.driverId, booking.transferDate, bookingId);
+  // Müsaitlik kontrolü — hem şoför hem ARAÇ (harita-tahmini pencereyle)
+  await assertDriverAvailable(input.driverId, booking, bookingId);
 
   // vehicleId verilmişse plakayı Vehicle tablosundan al (tarihsel snapshot için)
   let vehiclePlate = input.vehiclePlate;
@@ -197,6 +262,7 @@ export async function assignDriver(
     const vehicle = await prisma.vehicle.findUnique({ where: { id: input.vehicleId } });
     if (!vehicle) throw new AppError(404, 'Araç bulunamadı');
     if (!vehicle.isActive) throw new AppError(400, 'Seçilen araç pasif durumda');
+    await assertVehicleAvailable(input.vehicleId, booking, bookingId);
     vehiclePlate = vehicle.plate;
   }
 
@@ -230,8 +296,9 @@ export async function assignDriver(
 
     await tx.booking.update({ where: { id: bookingId }, data: { status: 'ASSIGNED' } });
     await tx.auditLog.create({
-      data: { userId: adminId, action: 'DRIVER_ASSIGNED', entityType: 'Booking', entityId: bookingId,
-              meta: { driverId: input.driverId, vehicleId: input.vehicleId, vehiclePlate } },
+      // Otomatik atamada adminId='SYSTEM' → User FK'sı yok; null yaz (AuditLog.userId nullable)
+      data: { userId: adminId === 'SYSTEM' ? null : adminId, action: 'DRIVER_ASSIGNED', entityType: 'Booking', entityId: bookingId,
+              meta: { driverId: input.driverId, vehicleId: input.vehicleId, vehiclePlate, auto: adminId === 'SYSTEM' } },
     });
 
     return a;
@@ -263,24 +330,30 @@ export async function autoAssignBooking(bookingId: string): Promise<{ assigned: 
     return { assigned: false, reason: 'Uygun durum değil' };
   }
 
-  const bufferMs = await getBufferMs();
-  const from = new Date(booking.transferDate.getTime() - bufferMs);
-  const to   = new Date(booking.transferDate.getTime() + bufferMs);
+  // Harita-tahmini pencere (assignDriver ile aynı mantık; burası yalnızca ön-filtre)
+  const marginMs = (await getMarginMin()) * 60_000;
+  const w = blockWindow({ transferDate: booking.transferDate, estimatedDurationMin: booking.estimatedDurationMin }, marginMs);
 
-  // Bu pencerede zaten meşgul araç ve şoför ID'leri
-  const busy = await prisma.driverAssignment.findMany({
+  const candidatesBusy = await prisma.driverAssignment.findMany({
     where: {
-      status: { in: ['ASSIGNED', 'EN_ROUTE'] },
+      status: { in: ['ASSIGNED', 'EN_ROUTE', 'PICKED_UP'] },
       booking: {
         id:          { not: bookingId },
         status:      { notIn: ['CANCELLED', 'COMPLETED'] },
-        transferDate: { gte: from, lte: to },
+        transferDate: { gte: new Date(w.start - 12 * 3600_000), lte: new Date(w.end + 12 * 3600_000) },
       },
     },
-    select: { vehicleId: true, driverId: true },
+    select: { vehicleId: true, driverId: true, pickedUpAt: true, booking: { select: { transferDate: true, estimatedDurationMin: true } } },
   });
-  const busyVehicleIds = new Set(busy.map((a) => a.vehicleId).filter(Boolean) as string[]);
-  const busyDriverIds  = new Set(busy.map((a) => a.driverId));
+  const busyVehicleIds = new Set<string>();
+  const busyDriverIds  = new Set<string>();
+  for (const c of candidatesBusy) {
+    const cw = blockWindow(c.booking, marginMs, { pickedUpAt: c.pickedUpAt });
+    if (w.start < cw.end && cw.start < w.end) {
+      if (c.vehicleId) busyVehicleIds.add(c.vehicleId);
+      busyDriverIds.add(c.driverId);
+    }
+  }
 
   // Bu sınıfta müsait, varsayılan şoförü olan araçları bul
   const candidates = await prisma.vehicle.findMany({

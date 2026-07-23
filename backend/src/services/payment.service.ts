@@ -188,6 +188,23 @@ export async function processCallback(body: Record<string, string>) {
 
 // ─── Banka bilgileri (public) ────────────────────────────────────────────────
 
+// Müşteriye gösterilecek aktif ödeme yöntemleri.
+// paytr / bank_transfer → IntegrationSetting.isActive ile yönetilir.
+// cash → 'cash' entegrasyonu tanımlıysa onun isActive'i, tanımlı değilse açık kabul edilir
+// (geriye dönük uyumluluk: araçta ödeme her zaman çalışıyordu).
+export async function getEnabledMethods() {
+  const [paytr, bank, cash] = await Promise.all([
+    getIntegration('paytr'),
+    getIntegration('bank_transfer'),
+    getIntegration('cash'),
+  ]);
+  return {
+    online: !!paytr?.isActive,
+    bank:   !!bank?.isActive,
+    cash:   cash ? !!cash.isActive : true,
+  };
+}
+
 export async function getBankInfo() {
   const cfg = await getIntegration('bank_transfer');
   if (!cfg || !cfg.isActive) return null;

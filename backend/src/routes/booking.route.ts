@@ -30,10 +30,12 @@ bookingRouter.get(
   getMyBookingsHandler,
 );
 
-// ID ile sorgula — auth gerekli
+// ID ile sorgula — auth isteğe bağlı (guest checkout sonrası onay/detay sayfası için).
+// Misafir rezervasyonu (customerId null) ID ile erişilebilir; kayıtlı kullanıcının
+// rezervasyonu ise getBooking içinde sahiplik doğrulanır (403).
 bookingRouter.get(
   '/:id',
-  authenticate, checkBlacklist,
+  optionalAuthenticate,
   getBookingHandler,
 );
 

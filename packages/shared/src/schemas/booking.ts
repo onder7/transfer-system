@@ -40,6 +40,17 @@ export const CreateBookingSchema = z.object({
   couponCode:       z.string().optional(),
   currency:         z.enum(['TRY', 'EUR', 'GBP']).default('TRY'),
 
+  // Ekstra hizmetler (çocuk koltuğu, isimle karşılama vb.) — fiyat backend'de hesaplanır
+  extras: z
+    .array(
+      z.object({
+        extraServiceId: z.string().min(1),
+        quantity:       z.number().int().min(1).max(20).default(1),
+        note:           z.string().max(200).optional(),
+      }),
+    )
+    .optional(),
+
   // Misafir bilgileri (guest checkout)
   guestName:  z.string().optional(),
   guestEmail: z.string().email().optional(),

@@ -112,16 +112,19 @@ export default function BookingEngine({ booking, onChange, onSearch }: Props) {
   const routes = routesData?.routes ?? [];
   const minAdvanceMin = parseInt(settingsData?.settings.find((s) => s.key === 'min_advance_minutes')?.value ?? '60', 10);
 
-  // Separate locations by type
-  const allAirports = locations.filter((l) => l.type === 'airport');
-  const allRegions = locations.filter((l) => l.type === 'region');
-  const allHotels = locations.filter((l) => l.type === 'hotel');
+  // Fiyatı tanımlı olmayan lokasyonlar müşteri formunda GÖSTERİLMEZ.
+  // routes = fiyat matrisinde tanımlı güzergah çiftleri; bir lokasyon en az bir
+  // güzergahta geçmiyorsa o noktaya/noktadan transfer satılamaz.
+  const pricedIds = useMemo(
+    () => new Set(routes.flatMap((r) => [r.fromLocationId, r.toLocationId])),
+    [routes],
+  );
+  const hasPricing = pricedIds.size > 0;
 
-  const airports = useMemo(() => {
-    if (!routes.length) return allAirports;
-    const pricedIds = new Set(routes.flatMap((r) => [r.fromLocationId, r.toLocationId]));
-    return allAirports.filter((a) => pricedIds.has(a.id));
-  }, [routes, allAirports]);
+  const byType = (t: string) => locations.filter((l) => l.type === t && pricedIds.has(l.id));
+  const airports  = useMemo(() => byType('airport'), [locations, pricedIds]);
+  const allRegions = useMemo(() => byType('region'), [locations, pricedIds]);
+  const allHotels  = useMemo(() => byType('hotel'),  [locations, pricedIds]);
 
   // Handle Direction Logic
   const isAirportToRegion = booking.direction === 'AIRPORT_TO_REGION';
@@ -205,7 +208,15 @@ export default function BookingEngine({ booking, onChange, onSearch }: Props) {
 
   return (
     <div id="booking" className="bg-white rounded-[24px] shadow-2xl shadow-slate-900/10 overflow-hidden w-full max-w-[560px] mx-auto font-sans p-6 sm:p-8 flex flex-col gap-6">
-      
+
+      {/* Fiyatlandırılmış güzergah yoksa form kullanılamaz — net bilgi ver */}
+      {!hasPricing && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Şu anda çevrimiçi rezervasyona açık güzergah bulunmuyor. Lütfen daha sonra tekrar deneyin
+          veya bizimle iletişime geçin.
+        </div>
+      )}
+
       {/* TRANSFER YÖNÜ */}
       <div>
         <label className="text-[12px] font-bold text-slate-500 uppercase tracking-widest mb-3 block">Transfer Yönü</label>

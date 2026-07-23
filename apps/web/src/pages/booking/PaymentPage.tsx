@@ -21,15 +21,20 @@ export function PaymentPage() {
   const [method,     setMethod]     = useState<Method>(null);
   const [iframeToken, setIframeToken] = useState<string | null>(null);
   const [bankInfo,   setBankInfo]   = useState<BankInfo | null>(null);
+  // Yalnızca admin'de aktif olan ödeme yöntemleri gösterilir
+  const [enabled,    setEnabled]    = useState<{ online: boolean; bank: boolean; cash: boolean } | null>(null);
   const [loading,    setLoading]    = useState(false);
   const [error,      setError]      = useState('');
   const [confirmed,  setConfirmed]  = useState(false); // araçta ödeme onayı
 
-  // Banka bilgilerini sayfa açılışında çek
+  // Banka bilgileri + aktif ödeme yöntemlerini sayfa açılışında çek
   useEffect(() => {
     api.get<{ bankInfo: BankInfo | null }>('/payments/bank-info')
       .then(({ data }) => setBankInfo(data.bankInfo))
       .catch(() => {});
+    api.get<{ methods: { online: boolean; bank: boolean; cash: boolean } }>('/payments/methods')
+      .then(({ data }) => setEnabled(data.methods))
+      .catch(() => setEnabled({ online: true, bank: true, cash: true }));
   }, []);
 
   // PayTR iframe mesajını dinle
@@ -236,7 +241,14 @@ export function PaymentPage() {
       )}
 
       <div className="mt-6 space-y-3">
+        {enabled && !enabled.online && !enabled.bank && !enabled.cash && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Şu anda aktif bir ödeme yöntemi bulunmuyor. Lütfen bizimle iletişime geçin.
+          </div>
+        )}
+
         {/* Kredi/Banka Kartı */}
+        {enabled?.online && (
         <button
           onClick={selectOnline}
           disabled={loading}
@@ -256,8 +268,10 @@ export function PaymentPage() {
             ))}
           </div>
         </button>
+        )}
 
         {/* Havale/EFT */}
+        {enabled?.bank && (
         <button
           onClick={selectBank}
           disabled={loading}
@@ -275,8 +289,10 @@ export function PaymentPage() {
             <p className="mt-1 pl-14 text-xs text-gray-400">{bankInfo.bankName}</p>
           )}
         </button>
+        )}
 
         {/* Araçta Ödeme */}
+        {enabled?.cash && (
         <button
           onClick={selectCash}
           disabled={loading}
@@ -291,6 +307,7 @@ export function PaymentPage() {
             <span className="text-gray-400 group-hover:text-amber-500">→</span>
           </div>
         </button>
+        )}
       </div>
 
       {loading && (
