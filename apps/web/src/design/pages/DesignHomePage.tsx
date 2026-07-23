@@ -279,7 +279,7 @@ export function DesignHomePage() {
   };
 
   return (
-    <div className="bg-white min-h-screen font-sans antialiased">
+    <div className="bg-white min-h-screen font-sans antialiased overflow-x-hidden">
       <section className="relative min-h-screen flex flex-col justify-center overflow-hidden">
         <div className="absolute inset-0">
           <img
@@ -293,44 +293,44 @@ export function DesignHomePage() {
 
         <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
 
-        <div className="relative z-10 max-w-7xl mx-auto px-6 pt-28 pb-20 w-full">
-          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+        <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 pt-24 sm:pt-28 pb-12 sm:pb-20 w-full">
+          <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-16">
             <div className="flex-1 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-1.5 text-white/90 text-xs font-semibold mb-6 tracking-wide">
+              <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-3.5 sm:px-4 py-1.5 text-white/90 text-xs font-semibold mb-4 sm:mb-6 tracking-wide">
                 <Star size={12} className="text-amber-400 fill-amber-400" />
                 {t.heroBadge}
               </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-[1.1] tracking-tight mb-5">
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-white leading-[1.15] tracking-tight mb-4 sm:mb-5">
                 {t.heroH1a} <span className="text-emerald-400">{t.heroH1b}</span>
                 <br className="hidden sm:block" /> {t.heroH1c}
               </h1>
-              <p className="text-white/70 text-lg leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0">
+              <p className="text-white/80 text-sm sm:text-base md:text-lg leading-relaxed mb-6 sm:mb-8 max-w-xl mx-auto lg:mx-0">
                 {t.heroSub}
               </p>
-              <div className="flex flex-wrap justify-center lg:justify-start gap-5">
+              <div className="flex flex-wrap justify-center lg:justify-start gap-3 sm:gap-5">
                 {[
                   { label: '50,000+', sub: t.heroStat1Label },
                   { label: '4.9 / 5', sub: t.heroStat2Label },
                   { label: '100%',   sub: t.heroStat3Label },
                 ].map((b) => (
-                  <div key={b.label} className="flex items-center gap-2">
-                    <Shield size={16} className="text-emerald-400" />
+                  <div key={b.label} className="flex items-center gap-2 bg-white/5 sm:bg-transparent border border-white/10 sm:border-0 rounded-xl px-3 py-1.5 sm:p-0">
+                    <Shield size={16} className="text-emerald-400 shrink-0" />
                     <div>
-                      <span className="text-white font-bold text-sm">{b.label}</span>
-                      <span className="text-white/50 text-xs ml-1.5">{b.sub}</span>
+                      <span className="text-white font-bold text-xs sm:text-sm">{b.label}</span>
+                      <span className="text-white/60 text-[11px] sm:text-xs ml-1">{b.sub}</span>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="w-full lg:w-auto lg:min-w-[520px]">
+            <div className="w-full lg:w-auto lg:min-w-[520px] max-w-full">
               <BookingEngine booking={booking} onChange={setBooking} onSearch={handleSearch} />
             </div>
           </div>
         </div>
 
-        <a href="#fleet" className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/50 hover:text-white transition-colors flex flex-col items-center gap-1 group">
+        <a href="#fleet" className="hidden sm:flex absolute bottom-6 left-1/2 -translate-x-1/2 text-white/50 hover:text-white transition-colors flex-col items-center gap-1 group">
           <span className="text-xs tracking-widest uppercase font-medium">{t.exploreFleet}</span>
           <ChevronDown size={20} className="animate-bounce" />
         </a>
@@ -338,7 +338,7 @@ export function DesignHomePage() {
 
       <DesignHowItWorks />
 
-      <section className="bg-gray-50 py-20 px-6" id="fleet">
+      <section className="bg-gray-50 py-12 sm:py-20 px-4 sm:px-6 overflow-hidden" id="fleet">
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col xl:flex-row gap-10 items-start">
             <div className="flex-1 min-w-0">

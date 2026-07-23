@@ -14,7 +14,7 @@ export default function DesignFeatures() {
   ];
 
   return (
-    <section id="services" className="bg-white py-20 px-6">
+    <section id="services" className="bg-white py-12 sm:py-20 px-4 sm:px-6 overflow-hidden">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-14">
           <span className="text-emerald-500 text-sm font-bold uppercase tracking-widest">{t.whyChooseUs}</span>

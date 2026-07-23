@@ -28,14 +28,14 @@ export function Navbar() {
         scrolled ? 'bg-white shadow-md py-3' : 'bg-transparent py-5'
       }`}
     >
-      <div className="mx-auto max-w-7xl px-6 flex items-center justify-between">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2.5 group no-underline">
-          <div className="w-9 h-9 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30 group-hover:scale-105 transition-transform">
-            <Plane size={18} className="text-white -rotate-45" />
+        <Link to="/" className="flex items-center gap-2 sm:gap-2.5 group no-underline">
+          <div className="w-8 h-8 sm:w-9 sm:h-9 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30 group-hover:scale-105 transition-transform shrink-0">
+            <Plane size={16} className="text-white -rotate-45 sm:w-[18px] sm:h-[18px]" />
           </div>
           <span
-            className={`font-bold text-xl tracking-tight transition-colors duration-300 ${
+            className={`font-bold text-base sm:text-xl tracking-tight transition-colors duration-300 ${
               scrolled ? 'text-slate-900' : 'text-white'
             }`}
           >

@@ -12,7 +12,7 @@ export default function DesignHowItWorks() {
   ];
 
   return (
-    <section id="how-it-works" className="bg-slate-50 py-20 px-6">
+    <section id="how-it-works" className="bg-slate-50 py-12 sm:py-20 px-4 sm:px-6 overflow-hidden">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-14">
           <span className="text-emerald-500 text-sm font-bold uppercase tracking-widest">{t.simpleProcess}</span>

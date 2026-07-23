@@ -207,11 +207,11 @@ export default function BookingEngine({ booking, onChange, onSearch }: Props) {
   const isSearchDisabled = !booking.fromLocationId || !booking.toLocationId || !booking.date || !booking.time;
 
   return (
-    <div id="booking" className="bg-white rounded-[24px] shadow-2xl shadow-slate-900/10 overflow-hidden w-full max-w-[560px] mx-auto font-sans p-6 sm:p-8 flex flex-col gap-6">
+    <div id="booking" className="bg-white rounded-2xl sm:rounded-[24px] shadow-2xl shadow-slate-900/10 overflow-hidden w-full max-w-[560px] mx-auto font-sans p-4 sm:p-7 flex flex-col gap-4 sm:gap-6">
 
       {/* Fiyatlandırılmış güzergah yoksa form kullanılamaz — net bilgi ver */}
       {!hasPricing && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-xs sm:text-sm text-amber-800">
           Şu anda çevrimiçi rezervasyona açık güzergah bulunmuyor. Lütfen daha sonra tekrar deneyin
           veya bizimle iletişime geçin.
         </div>
@@ -219,29 +219,29 @@ export default function BookingEngine({ booking, onChange, onSearch }: Props) {
 
       {/* TRANSFER YÖNÜ */}
       <div>
-        <label className="text-[12px] font-bold text-slate-500 uppercase tracking-widest mb-3 block">Transfer Yönü</label>
+        <label className="text-[11px] sm:text-[12px] font-bold text-slate-500 uppercase tracking-widest mb-2 sm:mb-3 block">Transfer Yönü</label>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={() => update({ direction: 'AIRPORT_TO_REGION' })}
-            className={`flex-1 py-3.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 border-2 ${
+            className={`flex-1 py-3 sm:py-3.5 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 border-2 ${
               isAirportToRegion
                 ? 'border-[#00c875] text-[#00c875] bg-emerald-50/50'
                 : 'border-gray-200 text-slate-500 hover:border-emerald-300'
             }`}
           >
-            <PlaneLanding size={18} /> Havalimanı → Bölge
+            <PlaneLanding size={16} className="shrink-0" /> Havalimanı → Bölge
           </button>
           <button
             type="button"
             onClick={() => update({ direction: 'REGION_TO_AIRPORT' })}
-            className={`flex-1 py-3.5 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 border-2 ${
+            className={`flex-1 py-3 sm:py-3.5 px-2 sm:px-4 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center justify-center gap-1.5 sm:gap-2 border-2 ${
               !isAirportToRegion
                 ? 'border-[#00c875] text-[#00c875] bg-emerald-50/50'
                 : 'border-gray-200 text-slate-500 hover:border-emerald-300'
             }`}
           >
-            <Home size={18} /> Bölge → Havalimanı
+            <Home size={16} className="shrink-0" /> Bölge → Havalimanı
           </button>
         </div>
       </div>
@@ -251,32 +251,32 @@ export default function BookingEngine({ booking, onChange, onSearch }: Props) {
         <button
           type="button"
           onClick={() => update({ destType: 'region' })}
-          className={`py-2.5 px-5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 border-2 ${
+          className={`py-2 sm:py-2.5 px-4 sm:px-5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 sm:gap-2 border-2 ${
             booking.destType === 'region'
               ? 'bg-[#00c875] border-[#00c875] text-white'
               : 'border-gray-200 text-slate-500 hover:border-emerald-300'
           }`}
         >
-          <MapPin size={16} /> Bölge
+          <MapPin size={15} /> Bölge
         </button>
         <button
           type="button"
           onClick={() => update({ destType: 'hotel' })}
-          className={`py-2.5 px-5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 border-2 ${
+          className={`py-2 sm:py-2.5 px-4 sm:px-5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-1.5 sm:gap-2 border-2 ${
             booking.destType === 'hotel'
               ? 'bg-[#00c875] border-[#00c875] text-white'
               : 'border-gray-200 text-slate-500 hover:border-emerald-300'
           }`}
         >
-          <Building size={16} /> Otel
+          <Building size={15} /> Otel
         </button>
       </div>
 
       {/* LOKASYONLAR */}
-      <div className="grid grid-cols-2 gap-4 relative">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 relative">
         <div>
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">{fromLabel}</label>
-          <div className="flex items-center gap-3 bg-[#fcfcfc] rounded-2xl px-4 py-3 border border-gray-200 hover:border-[#00c875] transition-all">
+          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 block">{fromLabel}</label>
+          <div className="flex items-center gap-3 bg-[#fcfcfc] rounded-2xl px-3.5 sm:px-4 py-2.5 sm:py-3 border border-gray-200 hover:border-[#00c875] transition-all">
             <CustomSelect
               value={booking.fromLocationId}
               onChange={(val) => update({ fromLocationId: val })}
@@ -287,8 +287,8 @@ export default function BookingEngine({ booking, onChange, onSearch }: Props) {
         </div>
 
         <div>
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">{toLabel}</label>
-          <div className="flex items-center gap-3 bg-[#fcfcfc] rounded-2xl px-4 py-3 border border-gray-200 hover:border-[#00c875] transition-all">
+          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 block">{toLabel}</label>
+          <div className="flex items-center gap-3 bg-[#fcfcfc] rounded-2xl px-3.5 sm:px-4 py-2.5 sm:py-3 border border-gray-200 hover:border-[#00c875] transition-all">
             <CustomSelect
               value={booking.toLocationId}
               onChange={(val) => update({ toLocationId: val })}
@@ -301,38 +301,38 @@ export default function BookingEngine({ booking, onChange, onSearch }: Props) {
       </div>
 
       {/* TARİH VE SAAT */}
-      <div className="grid grid-cols-[2fr_1fr_1fr] gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr_1fr] gap-3 sm:gap-4">
         <div>
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Transfer Tarihi</label>
-          <div className="flex items-center gap-3 bg-[#fcfcfc] rounded-2xl px-4 py-3.5 border border-gray-200 focus-within:border-[#00c875] focus-within:ring-1 focus-within:ring-[#00c875] transition-all">
+          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 block">Transfer Tarihi</label>
+          <div className="flex items-center gap-2.5 sm:gap-3 bg-[#fcfcfc] rounded-2xl px-3.5 sm:px-4 py-2.5 sm:py-3.5 border border-gray-200 focus-within:border-[#00c875] focus-within:ring-1 focus-within:ring-[#00c875] transition-all">
             <Calendar size={18} className="text-[#00c875] shrink-0" />
             <input
               type="date"
               min={todayStr}
               value={booking.date}
               onChange={(e) => update({ date: e.target.value })}
-              className="bg-transparent text-slate-700 text-[14px] font-semibold outline-none w-full cursor-pointer"
+              className="bg-transparent text-slate-700 text-[13px] sm:text-[14px] font-semibold outline-none w-full cursor-pointer min-w-0"
             />
           </div>
         </div>
-        <div className="col-span-2">
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Saat</label>
+        <div className="col-span-1 sm:col-span-2">
+          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 block">Saat</label>
           <div className="flex items-center gap-2">
-            <div className="flex-1 bg-[#fcfcfc] rounded-2xl px-3 py-3.5 border border-gray-200 focus-within:border-[#00c875] transition-all">
+            <div className="flex-1 bg-[#fcfcfc] rounded-2xl px-3 py-2.5 sm:py-3.5 border border-gray-200 focus-within:border-[#00c875] transition-all">
               <select 
                 value={selHour} 
                 onChange={(e) => update({ time: `${e.target.value}:${selMin}` })}
-                className="bg-transparent text-slate-700 text-[14px] w-full font-semibold outline-none appearance-none cursor-pointer text-center"
+                className="bg-transparent text-slate-700 text-[13px] sm:text-[14px] w-full font-semibold outline-none appearance-none cursor-pointer text-center"
               >
                 {availableHours.map(h => <option key={h} value={h}>{h}</option>)}
               </select>
             </div>
             <span className="text-slate-400 font-bold">:</span>
-            <div className="flex-1 bg-[#fcfcfc] rounded-2xl px-3 py-3.5 border border-gray-200 focus-within:border-[#00c875] transition-all">
+            <div className="flex-1 bg-[#fcfcfc] rounded-2xl px-3 py-2.5 sm:py-3.5 border border-gray-200 focus-within:border-[#00c875] transition-all">
               <select 
                 value={selMin} 
                 onChange={(e) => update({ time: `${selHour}:${e.target.value}` })}
-                className="bg-transparent text-slate-700 text-[14px] w-full font-semibold outline-none appearance-none cursor-pointer text-center"
+                className="bg-transparent text-slate-700 text-[13px] sm:text-[14px] w-full font-semibold outline-none appearance-none cursor-pointer text-center"
               >
                 {availableMinutes.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
@@ -342,46 +342,46 @@ export default function BookingEngine({ booking, onChange, onSearch }: Props) {
       </div>
 
       {/* YETİŞKİN VE ÇOCUK */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         <div>
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Yetişkin</label>
-          <div className="flex items-center gap-3 bg-[#fcfcfc] rounded-2xl px-3 py-3 border border-gray-200">
+          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 block">Yetişkin</label>
+          <div className="flex items-center gap-3 bg-[#fcfcfc] rounded-2xl px-3 py-2.5 sm:py-3 border border-gray-200">
             <button
               type="button"
               onClick={() => update({ adultCount: Math.max(1, booking.adultCount - 1) })}
-              className="w-8 h-8 rounded-md border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-white hover:border-[#00c875] transition-all text-xl leading-none bg-white shadow-sm"
+              className="w-8 h-8 rounded-md border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-white hover:border-[#00c875] transition-all text-xl leading-none bg-white shadow-sm shrink-0"
             >
               −
             </button>
-            <span className="flex-1 text-center text-[15px] font-bold text-slate-800">
+            <span className="flex-1 text-center text-[14px] sm:text-[15px] font-bold text-slate-800">
               {booking.adultCount}
             </span>
             <button
               type="button"
               onClick={() => update({ adultCount: Math.min(16, booking.adultCount + 1) })}
-              className="w-8 h-8 rounded-md border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-white hover:border-[#00c875] transition-all text-xl leading-none bg-white shadow-sm"
+              className="w-8 h-8 rounded-md border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-white hover:border-[#00c875] transition-all text-xl leading-none bg-white shadow-sm shrink-0"
             >
               +
             </button>
           </div>
         </div>
         <div>
-          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Çocuk (0-12 yaş)</label>
-          <div className="flex items-center gap-3 bg-[#fcfcfc] rounded-2xl px-3 py-3 border border-gray-200">
+          <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 block">Çocuk (0-12 yaş)</label>
+          <div className="flex items-center gap-3 bg-[#fcfcfc] rounded-2xl px-3 py-2.5 sm:py-3 border border-gray-200">
             <button
               type="button"
               onClick={() => update({ childCount: Math.max(0, booking.childCount - 1) })}
-              className="w-8 h-8 rounded-md border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-white hover:border-[#00c875] transition-all text-xl leading-none bg-white shadow-sm"
+              className="w-8 h-8 rounded-md border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-white hover:border-[#00c875] transition-all text-xl leading-none bg-white shadow-sm shrink-0"
             >
               −
             </button>
-            <span className="flex-1 text-center text-[15px] font-bold text-slate-800">
+            <span className="flex-1 text-center text-[14px] sm:text-[15px] font-bold text-slate-800">
               {booking.childCount}
             </span>
             <button
               type="button"
               onClick={() => update({ childCount: Math.min(16, booking.childCount + 1) })}
-              className="w-8 h-8 rounded-md border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-white hover:border-[#00c875] transition-all text-xl leading-none bg-white shadow-sm"
+              className="w-8 h-8 rounded-md border border-gray-200 flex items-center justify-center text-slate-500 hover:bg-white hover:border-[#00c875] transition-all text-xl leading-none bg-white shadow-sm shrink-0"
             >
               +
             </button>
@@ -391,61 +391,61 @@ export default function BookingEngine({ booking, onChange, onSearch }: Props) {
 
       {/* UÇUŞ NUMARASI */}
       <div>
-        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Uçuş Numarası (Opsiyonel)</label>
-        <div className="flex items-center gap-3 bg-[#fcfcfc] rounded-2xl px-4 py-3.5 border border-gray-200 focus-within:border-[#00c875] focus-within:ring-1 focus-within:ring-[#00c875] transition-all">
+        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 sm:mb-2 block">Uçuş Numarası (Opsiyonel)</label>
+        <div className="flex items-center gap-3 bg-[#fcfcfc] rounded-2xl px-3.5 sm:px-4 py-2.5 sm:py-3.5 border border-gray-200 focus-within:border-[#00c875] focus-within:ring-1 focus-within:ring-[#00c875] transition-all">
           <PlaneTakeoff size={18} className="text-slate-400 shrink-0" />
           <input
             type="text"
             placeholder="TK1234"
             value={booking.flightNo || ''}
             onChange={(e) => update({ flightNo: e.target.value })}
-            className="bg-transparent text-slate-700 text-[14px] font-semibold outline-none w-full"
+            className="bg-transparent text-slate-700 text-[13px] sm:text-[14px] font-semibold outline-none w-full min-w-0"
           />
         </div>
       </div>
 
       {/* GİDİŞ DÖNÜŞ CHECKBOX */}
       <div>
-        <label className="flex items-center gap-3 cursor-pointer group w-max">
+        <label className="flex items-center gap-3 cursor-pointer group w-max max-w-full">
           <button
             type="button"
             onClick={() => update({ tripType: booking.tripType === 'one-way' ? 'round-trip' : 'one-way' })}
-            className="text-[#00c875]"
+            className="text-[#00c875] shrink-0"
           >
             {booking.tripType === 'round-trip' ? <CheckSquare size={22} /> : <Square size={22} className="text-gray-300 group-hover:text-[#00c875]" />}
           </button>
-          <span className="text-[14px] font-semibold text-slate-700 select-none">Gidiş-dönüş transfer ekle</span>
+          <span className="text-[13px] sm:text-[14px] font-semibold text-slate-700 select-none">Gidiş-dönüş transfer ekle</span>
         </label>
 
         {booking.tripType === 'round-trip' && (
-          <div className="grid grid-cols-[2fr_1fr_1fr] gap-4 mt-4 p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl">
+          <div className="grid grid-cols-1 sm:grid-cols-[2fr_1fr_1fr] gap-3 sm:gap-4 mt-3 sm:mt-4 p-3.5 sm:p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl">
             <div>
-              <label className="text-[11px] font-bold text-emerald-700 uppercase tracking-widest mb-2 block">Dönüş Tarihi</label>
-              <div className="flex items-center gap-3 bg-white rounded-xl px-3 py-3 border border-emerald-200 focus-within:border-[#00c875] transition-all">
+              <label className="text-[11px] font-bold text-emerald-700 uppercase tracking-widest mb-1.5 sm:mb-2 block">Dönüş Tarihi</label>
+              <div className="flex items-center gap-2.5 bg-white rounded-xl px-3 py-2.5 sm:py-3 border border-emerald-200 focus-within:border-[#00c875] transition-all">
                 <Calendar size={16} className="text-[#00c875] shrink-0" />
                 <input
                   type="date"
                   min={booking.date || todayStr}
                   value={booking.returnDate || ''}
                   onChange={(e) => update({ returnDate: e.target.value })}
-                  className="bg-transparent text-slate-700 text-[14px] font-semibold outline-none w-full cursor-pointer"
+                  className="bg-transparent text-slate-700 text-[13px] sm:text-[14px] font-semibold outline-none w-full cursor-pointer min-w-0"
                 />
               </div>
             </div>
-            <div className="col-span-2">
-              <label className="text-[11px] font-bold text-emerald-700 uppercase tracking-widest mb-2 block">Dönüş Saati</label>
+            <div className="col-span-1 sm:col-span-2">
+              <label className="text-[11px] font-bold text-emerald-700 uppercase tracking-widest mb-1.5 sm:mb-2 block">Dönüş Saati</label>
               <div className="flex items-center gap-2">
-                <div className="flex-1 bg-white rounded-xl px-2 py-3 border border-emerald-200">
+                <div className="flex-1 bg-white rounded-xl px-2 py-2.5 sm:py-3 border border-emerald-200">
                   <select 
                     value={booking.returnTime?.split(':')[0] || '12'} 
                     onChange={(e) => update({ returnTime: `${e.target.value}:${booking.returnTime?.split(':')[1] || '00'}` })}
-                    className="bg-transparent text-slate-700 text-[14px] w-full font-semibold outline-none appearance-none cursor-pointer text-center"
+                    className="bg-transparent text-slate-700 text-[13px] sm:text-[14px] w-full font-semibold outline-none appearance-none cursor-pointer text-center"
                   >
                     {HOURS.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
                 </div>
                 <span className="text-slate-400 font-bold">:</span>
-                <div className="flex-1 bg-white rounded-xl px-2 py-3 border border-emerald-200">
+                <div className="flex-1 bg-white rounded-xl px-2 py-2.5 sm:py-3 border border-emerald-200">
                   <select 
                     value={booking.returnTime?.split(':')[1] || '00'} 
                     onChange={(e) => update({ returnTime: `${booking.returnTime?.split(':')[0] || '12'}:${e.target.value}` })}

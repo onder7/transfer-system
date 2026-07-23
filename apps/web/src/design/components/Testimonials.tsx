@@ -20,7 +20,7 @@ export default function DesignTestimonials() {
   ];
 
   return (
-    <section className="bg-slate-900 py-20 px-6 relative overflow-hidden">
+    <section className="bg-slate-900 py-12 sm:py-20 px-4 sm:px-6 relative overflow-hidden">
       <div className="absolute top-0 right-0 w-72 h-72 bg-emerald-500/5 rounded-full blur-3xl" />
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-sky-500/5 rounded-full blur-3xl" />
 
