@@ -36,6 +36,11 @@ export async function bankInfoHandler(_req: Request, res: Response, next: NextFu
   try { res.json({ bankInfo: await paymentService.getBankInfo() }); } catch (e) { next(e); }
 }
 
+// Aktif ödeme yöntemleri — müşteri formunda yalnızca bunlar gösterilir
+export async function paymentMethodsHandler(_req: Request, res: Response, next: NextFunction) {
+  try { res.json({ methods: await paymentService.getEnabledMethods() }); } catch (e) { next(e); }
+}
+
 export async function bankTransferHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await paymentService.initBankTransfer(req.params.bookingId as string);

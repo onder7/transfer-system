@@ -1,0 +1,270 @@
+[
+  {
+    "name": "Antalya Havalimanı (AYT)",
+    "nameEn": "Antalya Airport (AYT)",
+    "type": "airport",
+    "address": "Yeşilköy, Antalya Havaalanı Dış Hatlar Terminali 1, 07230 Muratpaşa/Antalya",
+    "lat": 36.8987,
+    "lng": 30.8005,
+    "isActive": true
+  },
+  {
+    "name": "Antalya Şehir Merkezi",
+    "nameEn": "Antalya City Center",
+    "type": "region",
+    "address": "Muratpaşa, Antalya",
+    "lat": 36.8848,
+    "lng": 30.7056
+  },
+  {
+    "name": "Kemer",
+    "nameEn": "Kemer",
+    "type": "region",
+    "address": "Kemer, Antalya",
+    "lat": 36.6022,
+    "lng": 30.5597
+  },
+  {
+    "name": "Manavgat",
+    "nameEn": "Manavgat",
+    "type": "region",
+    "address": "Manavgat, Antalya",
+    "lat": 36.7869,
+    "lng": 31.4429
+  },
+  {
+    "name": "Alanya",
+    "nameEn": "Alanya",
+    "type": "region",
+    "address": "Alanya, Antalya",
+    "lat": 36.5438,
+    "lng": 31.9998
+  },
+  {
+    "name": "Side",
+    "nameEn": "Side",
+    "type": "region",
+    "address": "Side, Manavgat/Antalya",
+    "lat": 36.7667,
+    "lng": 31.3889
+  },
+  {
+    "name": "Akra Antalya",
+    "nameEn": "Akra Antalya",
+    "type": "hotel",
+    "address": "Şirinyalı, Lara Cd. No:24, 07100 Muratpaşa/Antalya",
+    "lat": 36.8665,
+    "lng": 30.7302
+  },
+  {
+    "name": "Rixos Downtown Antalya",
+    "nameEn": "Rixos Downtown Antalya",
+    "type": "hotel",
+    "address": "Meltem, Sakıp Sabancı Blv. No:18, 07030 Muratpaşa/Antalya",
+    "lat": 36.8863,
+    "lng": 30.6782
+  },
+  {
+    "name": "Tuvana Hotel",
+    "nameEn": "Tuvana Hotel",
+    "type": "hotel",
+    "address": "Kaleiçi, Tuzcular, Karanlık Sk. No:18, 07100 Muratpaşa/Antalya",
+    "lat": 36.8842,
+    "lng": 30.7061
+  },
+  {
+    "name": "Ramada Plaza by Wyndham Antalya",
+    "nameEn": "Ramada Plaza by Wyndham Antalya",
+    "type": "hotel",
+    "address": "Gençlik, Fevzi Çakmak Cd. No:22, 07100 Muratpaşa/Antalya",
+    "lat": 36.8778,
+    "lng": 30.7108
+  },
+  {
+    "name": "Maxx Royal Kemer Resort",
+    "nameEn": "Maxx Royal Kemer Resort",
+    "type": "hotel",
+    "address": "Kiriş, Sahil Cd. No:5, 07980 Kemer/Antalya",
+    "lat": 36.5786,
+    "lng": 30.5841
+  },
+  {
+    "name": "Rixos Premium Tekirova",
+    "nameEn": "Rixos Premium Tekirova",
+    "type": "hotel",
+    "address": "Tekirova, 07995 Kemer/Antalya",
+    "lat": 36.5083,
+    "lng": 30.5061
+  },
+  {
+    "name": "Kamelya Collection Selin Hotel",
+    "nameEn": "Kamelya Collection Selin Hotel",
+    "type": "hotel",
+    "address": "Çolaklı, 07600 Manavgat/Antalya",
+    "lat": 36.8145,
+    "lng": 31.3256
+  },
+  {
+    "name": "The Land of Legends Kingdom Hotel",
+    "nameEn": "The Land of Legends Kingdom Hotel",
+    "type": "hotel",
+    "address": "Kadriye Mahallesi Atatürk Caddesi No:515-1, 07525 Serik/Antalya",
+    "lat": 36.8763,
+    "lng": 31.0028
+  },
+  {
+    "name": "Delphin Imperial Hotel",
+    "nameEn": "Delphin Imperial Hotel",
+    "type": "hotel",
+    "address": "Lara Turizm Yolu, 07230 Aksu/Antalya",
+    "lat": 36.8574,
+    "lng": 30.8872
+  },
+  {
+    "name": "Mylome Luxury Resort Hotel",
+    "nameEn": "Mylome Luxury Resort Hotel",
+    "type": "hotel",
+    "address": "Okurcalar, Karaburun Rv, 07920 Alanya/Antalya",
+    "lat": 36.6521,
+    "lng": 31.6703
+  },
+  {
+    "name": "Utopia World Hotel",
+    "nameEn": "Utopia World Hotel",
+    "type": "hotel",
+    "address": "Kargıcak, Caddesi No: 59, 07400 Alanya/Antalya",
+    "lat": 36.4589,
+    "lng": 32.1287
+  },
+  {
+    "name": "Barut Hemera",
+    "nameEn": "Barut Hemera",
+    "type": "hotel",
+    "address": "Suleyman Demirel Bulvari No 1, 07330 Side/Antalya",
+    "lat": 36.7824,
+    "lng": 31.3789
+  },
+  {
+    "name": "Paloma Oceana",
+    "nameEn": "Paloma Oceana",
+    "type": "hotel",
+    "address": "Kumköy, 07330 Side, Manavgat/Antalya",
+    "lat": 36.7932,
+    "lng": 31.3614
+  },
+  
+  {
+    "name": "Antalya Havalimanı (AYT)",
+    "nameEn": "Antalya Airport (AYT)",
+    "type": "airport",
+    "address": "Yeşilköy, Antalya Havaalanı Dış Hatlar Terminali 1, 07230 Muratpaşa/Antalya",
+    "lat": 36.8987,
+    "lng": 30.8005,
+    "isActive": true
+  },
+  {
+    "name": "Kemer",
+    "nameEn": "Kemer",
+    "type": "region",
+    "address": "Kemer, Antalya",
+    "lat": 36.6022,
+    "lng": 30.5597
+  },
+  {
+    "name": "Manavgat",
+    "nameEn": "Manavgat",
+    "type": "region",
+    "address": "Manavgat, Antalya",
+    "lat": 36.7869,
+    "lng": 31.4429
+  },
+  {
+    "name": "Alanya",
+    "nameEn": "Alanya",
+    "type": "region",
+    "address": "Alanya, Antalya",
+    "lat": 36.5438,
+    "lng": 31.9998
+  },
+  {
+    "name": "Side",
+    "nameEn": "Side",
+    "type": "region",
+    "address": "Side, Manavgat/Antalya",
+    "lat": 36.7667,
+    "lng": 31.3889
+  },
+  {
+    "name": "Maxx Royal Kemer Resort",
+    "nameEn": "Maxx Royal Kemer Resort",
+    "type": "hotel",
+    "address": "Kiriş, Sahil Cd. No:5, 07980 Kemer/Antalya",
+    "lat": 36.5786,
+    "lng": 30.5841
+  },
+  {
+    "name": "Rixos Premium Tekirova",
+    "nameEn": "Rixos Premium Tekirova",
+    "type": "hotel",
+    "address": "Tekirova, 07995 Kemer/Antalya",
+    "lat": 36.5083,
+    "lng": 30.5061
+  },
+  {
+    "name": "Kamelya Collection Selin Hotel",
+    "nameEn": "Kamelya Collection Selin Hotel",
+    "type": "hotel",
+    "address": "Çolaklı, 07600 Manavgat/Antalya",
+    "lat": 36.8145,
+    "lng": 31.3256
+  },
+  {
+    "name": "The Land of Legends Kingdom Hotel",
+    "nameEn": "The Land of Legends Kingdom Hotel",
+    "type": "hotel",
+    "address": "Kadriye Mahallesi Atatürk Caddesi No:515-1, 07525 Serik/Antalya",
+    "lat": 36.8763,
+    "lng": 31.0028
+  },
+  {
+    "name": "Delphin Imperial Hotel",
+    "nameEn": "Delphin Imperial Hotel",
+    "type": "hotel",
+    "address": "Lara Turizm Yolu, 07230 Aksu/Antalya",
+    "lat": 36.8574,
+    "lng": 30.8872
+  },
+  {
+    "name": "Mylome Luxury Resort Hotel",
+    "nameEn": "Mylome Luxury Resort Hotel",
+    "type": "hotel",
+    "address": "Okurcalar, Karaburun Rv, 07920 Alanya/Antalya",
+    "lat": 36.6521,
+    "lng": 31.6703
+  },
+  {
+    "name": "Utopia World Hotel",
+    "nameEn": "Utopia World Hotel",
+    "type": "hotel",
+    "address": "Kargıcak, Caddesi No: 59, 07400 Alanya/Antalya",
+    "lat": 36.4589,
+    "lng": 32.1287
+  },
+  {
+    "name": "Barut Hemera",
+    "nameEn": "Barut Hemera",
+    "type": "hotel",
+    "address": "Suleyman Demirel Bulvari No 1, 07330 Side/Antalya",
+    "lat": 36.7824,
+    "lng": 31.3789
+  },
+  {
+    "name": "Paloma Oceana",
+    "nameEn": "Paloma Oceana",
+    "type": "hotel",
+    "address": "Kumköy, 07330 Side, Manavgat/Antalya",
+    "lat": 36.7932,
+    "lng": 31.3614
+  }
+
+]

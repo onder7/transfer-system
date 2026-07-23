@@ -6,6 +6,7 @@ interface Location {
   id: string; name: string; nameEn: string | null;
   type: string; lat: number | null; lng: number | null;
   address: string | null; isActive: boolean;
+  regionId: string | null;
 }
 
 const TYPE_LABELS: Record<string, { label: string; icon: string }> = {
@@ -17,9 +18,10 @@ const TYPE_LABELS: Record<string, { label: string; icon: string }> = {
 
 
 function LocationForm({
-  initial, onSave, onCancel,
+  initial, regions, onSave, onCancel,
 }: {
   initial?: Location;
+  regions: Location[];
   onSave: (d: Partial<Location> & { id?: string }) => void;
   onCancel: () => void;
 }) {
@@ -31,6 +33,7 @@ function LocationForm({
     lng:      initial?.lng      ?? null,
     address:  initial?.address  ?? null,
     isActive: initial?.isActive ?? true,
+    regionId: initial?.regionId ?? null,
   });
 
   const set = (k: keyof typeof form, v: unknown) =>
@@ -76,6 +79,22 @@ function LocationForm({
             value={form.lng ?? ''}
             onChange={(e) => set('lng', e.target.value ? Number(e.target.value) : null)} />
         </div>
+        {form.type !== 'region' && (
+          <div className="col-span-2">
+            <label className="label">
+              Bağlı Bölge <span className="font-normal normal-case text-gray-400">
+                (toplu fiyat girişinde bu bölge altında gruplanır)
+              </span>
+            </label>
+            <select className="input" value={form.regionId ?? ''}
+              onChange={(e) => set('regionId', e.target.value || null)}>
+              <option value="">— Bölge seçilmedi —</option>
+              {regions
+                .filter((r) => r.id !== initial?.id)
+                .map((r) => <option key={r.id} value={r.id}>📍 {r.name}</option>)}
+            </select>
+          </div>
+        )}
       </div>
 
       <label className="flex cursor-pointer items-center gap-2">
@@ -128,7 +147,9 @@ export function LocationsPage() {
     onSuccess:  () => qc.invalidateQueries({ queryKey: ['admin', 'locations'] }),
   });
 
-  const all       = data?.locations ?? [];
+  const all        = data?.locations ?? [];
+  const regionList = all.filter((l) => l.type === 'region');
+  const regionName = (id: string | null) => regionList.find((r) => r.id === id)?.name ?? null;
   const filtered  = filter === 'all' ? all : all.filter((l) => l.type === filter);
   const airports  = all.filter((l) => l.type === 'airport').length;
   const regions   = all.filter((l) => l.type === 'region').length;
@@ -168,6 +189,7 @@ export function LocationsPage() {
 
       {showNew && (
         <LocationForm
+          regions={regionList}
           onSave={(d) => createMut.mutate(d)}
           onCancel={() => setShowNew(false)}
         />
@@ -199,6 +221,7 @@ export function LocationsPage() {
                       <td colSpan={5} className="px-4 py-3">
                         <LocationForm
                           initial={loc}
+                          regions={regionList}
                           onSave={(d) => updateMut.mutate(d as Location & { id: string })}
                           onCancel={() => setEditId(null)}
                         />
@@ -216,6 +239,11 @@ export function LocationsPage() {
                           {TYPE_LABELS[loc.type]?.icon ?? '📌'}
                           {TYPE_LABELS[loc.type]?.label ?? loc.type}
                         </span>
+                        {loc.type !== 'region' && (
+                          regionName(loc.regionId)
+                            ? <p className="mt-0.5 text-xs text-amber-600">📍 {regionName(loc.regionId)}</p>
+                            : <p className="mt-0.5 text-xs text-gray-300">bölge atanmamış</p>
+                        )}
                       </td>
                       <td className="px-4 py-3 font-mono text-xs text-gray-500">
                         {loc.lat != null ? `${loc.lat.toFixed(4)}, ${loc.lng?.toFixed(4)}` : '—'}

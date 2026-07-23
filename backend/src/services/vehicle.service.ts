@@ -17,27 +17,38 @@ export async function listVehicles(filters?: { vehicleClassId?: string; driverId
   });
 }
 
-// Belirli bir transferDate için uygun araçları döndür (sınıf + aktif + çakışma yok)
-export async function availableVehicles(vehicleClassId: string, transferDate: Date) {
-  const turnaroundSetting = await prisma.systemSetting.findUnique({
+// Belirli bir transferDate için uygun araçları döndür (sınıf + aktif + çakışma yok).
+// driver.service ile aynı harita-tahmini pencere mantığı: meşguliyet =
+// [transferDate − pay, yolcuAlmaAnı + tahmini süre + pay]. estMin verilmezse 60 dk.
+const DEFAULT_TRIP_MIN = 60;
+export async function availableVehicles(vehicleClassId: string, transferDate: Date, estMin?: number) {
+  const marginSetting = await prisma.systemSetting.findUnique({
     where: { key: 'vehicle_turnaround_minutes' },
   });
-  const bufferMs = (turnaroundSetting ? Number(turnaroundSetting.value) : 120) * 60_000;
-  const from = new Date(transferDate.getTime() - bufferMs);
-  const to   = new Date(transferDate.getTime() + bufferMs);
+  const marginMs = (marginSetting ? Number(marginSetting.value) : 20) * 60_000;
+  const travelMs = (estMin ?? DEFAULT_TRIP_MIN) * 60_000;
+  const wStart = transferDate.getTime() - marginMs;
+  const wEnd   = transferDate.getTime() + travelMs + marginMs;
 
-  const busy = await prisma.driverAssignment.findMany({
+  const candidates = await prisma.driverAssignment.findMany({
     where: {
-      status: { in: ['ASSIGNED', 'EN_ROUTE'] },
+      status: { in: ['ASSIGNED', 'EN_ROUTE', 'PICKED_UP'] },
       vehicleId: { not: null },
       booking: {
         status:      { notIn: ['CANCELLED', 'COMPLETED'] },
-        transferDate: { gte: from, lte: to },
+        transferDate: { gte: new Date(wStart - 12 * 3600_000), lte: new Date(wEnd + 12 * 3600_000) },
       },
     },
-    select: { vehicleId: true },
+    select: { vehicleId: true, pickedUpAt: true, booking: { select: { transferDate: true, estimatedDurationMin: true } } },
   });
-  const busyIds = new Set(busy.map((a) => a.vehicleId).filter(Boolean) as string[]);
+
+  const busyIds = new Set<string>();
+  for (const c of candidates) {
+    const anchor = (c.pickedUpAt ?? c.booking.transferDate).getTime();
+    const cStart = c.booking.transferDate.getTime() - marginMs;
+    const cEnd   = anchor + (c.booking.estimatedDurationMin ?? DEFAULT_TRIP_MIN) * 60_000 + marginMs;
+    if (wStart < cEnd && cStart < wEnd && c.vehicleId) busyIds.add(c.vehicleId);
+  }
 
   return prisma.vehicle.findMany({
     where: {

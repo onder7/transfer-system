@@ -5,7 +5,7 @@ import { decrypt } from '../utils/crypto.js';
 const CACHE_TTL = 300; // 5 dakika
 
 export type ServiceKey =
-  | 'paytr' | 'bank_transfer' | 'flight' | 'map'
+  | 'paytr' | 'bank_transfer' | 'cash' | 'flight' | 'map'
   | 'sms'   | 'whatsapp' | 'smtp' | 'exchange' | 'aeroDataBox' | 'netgsm' | 'osm' | 'exchangeRate';
 
 interface IntegrationConfig {

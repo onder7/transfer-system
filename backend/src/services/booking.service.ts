@@ -3,6 +3,7 @@ import { AppError }                           from '../middlewares/error.middlew
 import { validateCoupon }                     from './coupon.service.js';
 import { queueNotification, bookingConfirmationHtml, bookingReceivedHtml } from './notification.service.js';
 import { autoAssignBooking }                  from './driver.service.js';
+import { estimateDurationMin }                 from './route-estimate.service.js';
 import type { CreateBookingInput }            from '@transfer/shared';
 import type { PriceSurcharge, BookingStatus } from '@prisma/client';
 
@@ -187,6 +188,29 @@ export async function createBooking(
     couponId       = cv.coupon.id;
   }
 
+  // 5b. Gidiş-dönüş: dönüş tarihi zorunlu ve gidişten sonra olmalı
+  let returnDateObj: Date | null = null;
+  if (data.returnFlight) {
+    if (!data.returnDate) {
+      throw new AppError(400, 'Gidiş-dönüş transfer için dönüş tarihi ve saati zorunludur.');
+    }
+    returnDateObj = new Date(data.returnDate);
+    if (isNaN(returnDateObj.getTime())) {
+      throw new AppError(400, 'Dönüş tarihi geçersiz.');
+    }
+    if (returnDateObj <= transferDate) {
+      throw new AppError(400, 'Dönüş tarihi, gidiş tarihinden sonra olmalıdır.');
+    }
+  }
+
+  // 5c. Harita tahmini yolculuk süresi — çakışma penceresi otomatik hesabında kullanılır.
+  // Serbest adres koordinatı varsa onu, yoksa lokasyon koordinatını kullan.
+  const fromLat = data.customFromLat ?? fromLoc.lat;
+  const fromLng = data.customFromLng ?? fromLoc.lng;
+  const toLat   = data.customToLat   ?? toLoc.lat;
+  const toLng   = data.customToLng   ?? toLoc.lng;
+  const estimatedDurationMin = await estimateDurationMin(fromLat, fromLng, toLat, toLng);
+
   // 5. Atomik oluşturma
   const result = await prisma.$transaction(async (tx) => {
     const booking = await tx.booking.create({
@@ -205,6 +229,7 @@ export async function createBooking(
         customToLng:     data.customToLng,
         vehicleClassId:  data.vehicleClassId,
         transferDate,
+        estimatedDurationMin,
         adultCount:      data.adultCount,
         childCount:      data.childCount,
         flightNumber:    data.flightNumber,
@@ -225,6 +250,40 @@ export async function createBooking(
     if (resolvedExtras.length) {
       await tx.bookingExtra.createMany({
         data: resolvedExtras.map((e) => ({ ...e, bookingId: booking.id })),
+      });
+    }
+
+    // Dönüş bacağı — AYRI rezervasyon (ters güzergah, kendi tarihi).
+    // Ücret gidiş kaydında tutulur (tek Payment) → gelir çift sayılmaz.
+    if (returnDateObj) {
+      await tx.booking.create({
+        data: {
+          customerId:      userId ?? null,
+          guestEmail:      data.guestEmail,
+          guestPhone:      data.guestPhone,
+          guestName:       data.guestName,
+          // Güzergah ters çevrilir
+          fromLocationId:  data.toLocationId,
+          toLocationId:    data.fromLocationId,
+          customFromAddress: data.customToAddress,
+          customFromLat:   data.customToLat,
+          customFromLng:   data.customToLng,
+          customToAddress: data.customFromAddress,
+          customToLat:     data.customFromLat,
+          customToLng:     data.customFromLng,
+          vehicleClassId:  data.vehicleClassId,
+          transferDate:    returnDateObj,
+          estimatedDurationMin,         // ters güzergah, aynı tahmini süre
+          adultCount:      data.adultCount,
+          childCount:      data.childCount,
+          flightNumber:    data.returnFlightNo,
+          returnFlight:    false,          // dönüş bacağının kendisi tek yön
+          extraRequests:   data.extraRequests,
+          price:           0,              // ücret gidiş kaydında
+          currency:        data.currency ?? 'TRY',
+          status:          'PENDING',
+          outboundId:      booking.id,     // gidişe bağla
+        },
       });
     }
 
@@ -326,8 +385,8 @@ export async function getBooking(id: string, userId?: string, isAdmin = false) {
 }
 
 export async function getBookingByRef(ref: string) {
-  const booking = await prisma.booking.findUnique({
-    where:   { bookingRef: ref },
+  const booking = await prisma.booking.findFirst({
+    where: { OR: [{ bookingRef: ref }, { id: ref }] },
     include: {
       fromLocation: true,
       toLocation:   true,
@@ -365,6 +424,12 @@ export async function cancelBooking(id: string, userId?: string, isAdmin = false
   await prisma.$transaction(async (tx) => {
     await tx.booking.update({ where: { id }, data: { status: 'CANCELLED' } });
 
+    // Gidiş iptal edilirse bağlı dönüş bacağı da iptal edilir
+    await tx.booking.updateMany({
+      where: { outboundId: id, status: { notIn: ['CANCELLED', 'COMPLETED'] } },
+      data:  { status: 'CANCELLED' },
+    });
+
     if (payment && refundAmount > 0) {
       await tx.payment.update({
         where: { id: payment.id },
@@ -395,6 +460,12 @@ export async function confirmBooking(bookingId: string) {
     where:   { id: bookingId },
     data:    { status: 'CONFIRMED' },
     include: { fromLocation: true, toLocation: true, customer: { select: { email: true } } },
+  });
+
+  // Gidiş onaylandıysa dönüş bacağı da onaylanır (ödeme gidişte tutulur)
+  await prisma.booking.updateMany({
+    where: { outboundId: bookingId, status: 'PENDING' },
+    data:  { status: 'CONFIRMED' },
   });
 
   const recipient = booking.guestEmail ?? booking.customer?.email ?? null;

@@ -183,6 +183,16 @@ export function BookingLookupPage() {
             </div>
           )}
 
+          {/* Canlı takip butonu — şoför yolda veya atanmışsa */}
+          {['EN_ROUTE', 'PICKED_UP', 'ASSIGNED'].includes(booking.status) && (
+            <Link
+              to={`/tracking/${booking.id}`}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              🗺️ Canlı Takip — Şoförü Haritada Gör
+            </Link>
+          )}
+
           <div className="flex gap-3">
             <Link to="/" className="btn btn-primary flex-1 text-center">Yeni Rezervasyon</Link>
           </div>

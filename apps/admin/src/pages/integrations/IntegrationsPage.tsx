@@ -13,6 +13,8 @@ const SERVICE_LABELS: Record<string, { label: string; icon: string; provider?: s
   paytr:         { label: 'PayTR Ödeme',       icon: '💳', secretFields: ['merchantKey', 'merchantSalt'], configFields: ['merchantId', 'callbackUrl', 'okUrl', 'failUrl', 'testMode'] },
   bank_transfer: { label: 'Havale / EFT',      icon: '🏦', secretFields: [], configFields: ['bankName', 'accountName', 'iban', 'branchCode', 'description'],
     configHints: { iban: 'TR00 0000 0000 0000 0000 0000 00', branchCode: 'Şube kodu (opsiyonel)', description: 'Müşteriye gösterilecek ek not' } },
+  // Araçta ödeme — API anahtarı yok, sadece aç/kapat. Kayıt yoksa AÇIK kabul edilir.
+  cash:          { label: 'Araçta Ödeme',      icon: '💵', secretFields: [], configFields: [] },
   // service='flight' (backend getIntegration('flight') bunu arar). Sağlayıcı seçilebilir:
   // aeroDataBox (RapidAPI) veya airlabs. İkisi de tek 'apiKey' secret'i kullanır;
   // flight.service cfg.provider'a göre doğru API'yi çağırır.

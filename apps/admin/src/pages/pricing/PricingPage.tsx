@@ -2,7 +2,7 @@ import { Fragment, useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
-interface Location     { id: string; name: string; type: string; }
+interface Location     { id: string; name: string; type: string; regionId?: string | null; }
 interface VehicleClass {
   id: string; name: string; nameEn: string | null;
   capacity: number; luggageCapacity: number; isShared: boolean;
@@ -25,18 +25,42 @@ interface ChildPriceRule {
   discountPercent: number; isActive: boolean;
 }
 
-// ─── Lokasyon Hücresi ─────────────────────────────────────────────────────────
+// ─── Lokasyon türü renk şeması ────────────────────────────────────────────────
+const TYPE_STYLE: Record<string, { icon: string; label: string; badge: string; dot: string }> = {
+  airport: { icon: '✈️', label: 'Havalimanı', badge: 'bg-sky-100 text-sky-700 ring-sky-200',          dot: 'bg-sky-500' },
+  region:  { icon: '📍', label: 'Bölge',      badge: 'bg-amber-100 text-amber-800 ring-amber-200',    dot: 'bg-amber-500' },
+  hotel:   { icon: '🏨', label: 'Otel',       badge: 'bg-violet-100 text-violet-700 ring-violet-200', dot: 'bg-violet-500' },
+  port:    { icon: '⚓', label: 'Liman',      badge: 'bg-teal-100 text-teal-700 ring-teal-200',       dot: 'bg-teal-500' },
+  city:    { icon: '🏙️', label: 'Şehir',      badge: 'bg-rose-100 text-rose-700 ring-rose-200',       dot: 'bg-rose-500' },
+};
+const typeStyle = (t: string) => TYPE_STYLE[t] ?? { icon: '📌', label: t, badge: 'bg-gray-100 text-gray-600 ring-gray-200', dot: 'bg-gray-400' };
+
+// ─── Lokasyon Hücresi (türe göre renkli) ──────────────────────────────────────
 function LocationCell({ name, type }: { name: string; type: string }) {
-  if (type === 'airport') {
-    return (
-      <span className="inline-flex items-center gap-1.5">
-        <span className="inline-flex items-center gap-1 rounded-md bg-sky-100 px-1.5 py-0.5 text-xs font-semibold text-sky-700 ring-1 ring-sky-200">
-          ✈️ {name}
-        </span>
-      </span>
-    );
-  }
-  return <span className="text-gray-700">{name}</span>;
+  const s = typeStyle(type);
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-semibold ring-1 ${s.badge}`}>
+      {s.icon} {name}
+    </span>
+  );
+}
+
+// Renk açıklaması (legend)
+function TypeLegend() {
+  return (
+    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+      <span>Renkler:</span>
+      {['airport', 'region', 'hotel'].map((t) => {
+        const s = typeStyle(t);
+        return (
+          <span key={t} className="inline-flex items-center gap-1.5">
+            <span className={`inline-block size-2 rounded-full ${s.dot}`} />
+            {s.icon} {s.label}
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
 // ─── Toplu Fiyat Girişi Paneli ────────────────────────────────────────────────
@@ -50,7 +74,7 @@ function BulkPanel({
   onClose: () => void;
 }) {
   const [fromId,      setFromId]      = useState('');
-  const [vcId,        setVcId]        = useState('');
+  const [vcIds,       setVcIds]       = useState<string[]>([]);
   const [defaultDisc, setDefaultDisc] = useState('10');
   const [prices, setPrices] = useState<Record<string, { price: string; disc: string }>>({});
 
@@ -59,49 +83,102 @@ function BulkPanel({
     [locations, fromId],
   );
 
-  // Mevcut fiyatları pre-fill et
-  const prefill = (newFromId: string, newVcId: string) => {
+  // Bölge → oteller gruplaması. Bölge satırı da bir destinasyondur (from değilse).
+  const grouped = useMemo(() => {
+    const airports = destinations.filter((l) => l.type === 'airport');
+    const hotels   = destinations.filter((l) => l.type === 'hotel');
+    const others   = destinations.filter((l) => !['airport', 'region', 'hotel'].includes(l.type));
+    const regionIds = new Set(locations.filter((l) => l.type === 'region').map((l) => l.id));
+
+    const regionGroups = locations
+      .filter((l) => l.type === 'region')
+      .map((r) => ({
+        region:   r,
+        isDest:   r.id !== fromId,             // bölgenin kendisi hedef olabilir mi
+        children: hotels.filter((h) => h.regionId === r.id),
+      }))
+      .filter((g) => g.isDest || g.children.length);
+
+    // Bölgesi olmayan (veya bölgesi listede olmayan) oteller
+    const orphanHotels = hotels.filter((h) => !h.regionId || !regionIds.has(h.regionId));
+    return { airports, regionGroups, orphanHotels, others };
+  }, [destinations, locations, fromId]);
+
+  // Mevcut fiyatları pre-fill et — çoklu seçimde İLK araç sınıfı baz alınır
+  const prefill = (newFromId: string, baseVcId?: string) => {
+    if (!newFromId || !baseVcId) return setPrices({});
     const filled: Record<string, { price: string; disc: string }> = {};
     existingMatrix.forEach((pm) => {
-      if (pm.fromLocation.id === newFromId && pm.vehicleClass.id === newVcId) {
-        filled[pm.toLocation.id] = {
-          price: String(pm.basePrice),
-          disc:  String(pm.returnDiscount),
-        };
+      if (pm.fromLocation.id === newFromId && pm.vehicleClass.id === baseVcId) {
+        filled[pm.toLocation.id] = { price: String(pm.basePrice), disc: String(pm.returnDiscount) };
       }
     });
     setPrices(filled);
   };
 
-  const handleFrom = (id: string) => { setFromId(id); prefill(id, vcId); };
-  const handleVC   = (id: string) => { setVcId(id);   prefill(fromId, id); };
+  const handleFrom = (id: string) => { setFromId(id); prefill(id, vcIds[0]); };
+  const toggleVc = (id: string) => {
+    setVcIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      prefill(fromId, next[0]);
+      return next;
+    });
+  };
 
-  const setAll = (field: 'price' | 'disc', value: string) =>
+  // Belirli satırlara fiyat uygula (grup veya tümü)
+  const applyTo = (ids: string[], value: string) =>
     setPrices((p) => {
       const next = { ...p };
-      destinations.forEach((l) => {
-        next[l.id] = { price: next[l.id]?.price ?? '', disc: next[l.id]?.disc ?? defaultDisc, [field]: value };
+      ids.forEach((id) => {
+        next[id] = { price: value, disc: next[id]?.disc ?? defaultDisc };
       });
       return next;
     });
 
+  const setPrice = (id: string, price: string) =>
+    setPrices((p) => ({ ...p, [id]: { disc: p[id]?.disc ?? defaultDisc, price } }));
+  const setDisc = (id: string, disc: string) =>
+    setPrices((p) => ({ ...p, [id]: { price: p[id]?.price ?? '', disc } }));
+
+  const hasPrice = (id: string) => !!prices[id]?.price && Number(prices[id].price) > 0;
+
   const handleSave = () => {
     const rows = destinations
-      .filter((l) => prices[l.id]?.price && Number(prices[l.id].price) > 0)
-      .map((l) => ({
-        fromLocationId: fromId,
-        toLocationId:   l.id,
-        vehicleClassId: vcId,
-        basePrice:      Number(prices[l.id].price),
-        returnDiscount: Number(prices[l.id]?.disc ?? defaultDisc),
-        isActive:       true,
-      }));
+      .filter((l) => hasPrice(l.id))
+      .flatMap((l) =>
+        vcIds.map((vcId) => ({
+          fromLocationId: fromId,
+          toLocationId:   l.id,
+          vehicleClassId: vcId,
+          basePrice:      Number(prices[l.id].price),
+          returnDiscount: Number(prices[l.id]?.disc ?? defaultDisc),
+          isActive:       true,
+        })),
+      );
     if (!rows.length) return;
     onSave(rows);
   };
 
-  const ready = fromId && vcId;
-  const filledCount = destinations.filter((l) => prices[l.id]?.price && Number(prices[l.id].price) > 0).length;
+  const ready       = !!fromId && vcIds.length > 0;
+  const filledCount = destinations.filter((l) => hasPrice(l.id)).length;
+  const rowCount    = filledCount * vcIds.length;
+
+  // Tek destinasyon satırı (bileşen değil düz fonksiyon → input focus kaybolmaz)
+  const renderRow = (l: Location, indent = false) => (
+    <tr key={l.id} className={`border-b border-gray-100 ${hasPrice(l.id) ? 'bg-green-50/40' : ''}`}>
+      <td className={`px-4 py-2 ${indent ? 'pl-10' : ''}`}>
+        <LocationCell name={l.name} type={l.type} />
+      </td>
+      <td className="px-4 py-2">
+        <input type="number" min={0} placeholder="—" className="input py-1 text-sm w-32"
+          value={prices[l.id]?.price ?? ''} onChange={(e) => setPrice(l.id, e.target.value)} />
+      </td>
+      <td className="px-4 py-2">
+        <input type="number" min={0} max={100} placeholder={defaultDisc} className="input py-1 text-sm w-20"
+          value={prices[l.id]?.disc ?? ''} onChange={(e) => setDisc(l.id, e.target.value)} />
+      </td>
+    </tr>
+  );
 
   return (
     <div className="card overflow-hidden">
@@ -112,19 +189,21 @@ function BulkPanel({
 
       <div className="p-4 space-y-4">
         {/* Seçiciler */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label">Nereden</label>
             <select className="input" value={fromId} onChange={(e) => handleFrom(e.target.value)}>
               <option value="">Lokasyon seçin…</option>
-              {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="label">Araç Sınıfı</label>
-            <select className="input" value={vcId} onChange={(e) => handleVC(e.target.value)}>
-              <option value="">Araç sınıfı seçin…</option>
-              {vehicleClasses.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+              {['airport', 'region', 'hotel', 'port', 'city'].map((t) => {
+                const opts = locations.filter((l) => l.type === t);
+                if (!opts.length) return null;
+                const s = typeStyle(t);
+                return (
+                  <optgroup key={t} label={`${s.icon} ${s.label}`}>
+                    {opts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  </optgroup>
+                );
+              })}
             </select>
           </div>
           <div>
@@ -134,65 +213,134 @@ function BulkPanel({
           </div>
         </div>
 
+        {/* Araç sınıfı — çoklu seçim */}
+        <div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="label mb-0">
+              Araç Sınıfı <span className="font-normal normal-case text-gray-400">(çoklu seçim)</span>
+            </label>
+            <div className="flex gap-3 text-xs">
+              <button type="button" className="text-blue-600 hover:underline"
+                onClick={() => { const all = vehicleClasses.map((v) => v.id); setVcIds(all); prefill(fromId, all[0]); }}>
+                Tümünü seç
+              </button>
+              <button type="button" className="text-gray-400 hover:underline"
+                onClick={() => { setVcIds([]); setPrices({}); }}>
+                Temizle
+              </button>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {vehicleClasses.map((v) => {
+              const on = vcIds.includes(v.id);
+              return (
+                <button key={v.id} type="button" onClick={() => toggleVc(v.id)}
+                  className={`rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors ${
+                    on ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300'
+                  }`}>
+                  {on ? '✓ ' : ''}{v.name}
+                </button>
+              );
+            })}
+          </div>
+          {vcIds.length > 1 && (
+            <p className="mt-1.5 text-xs text-amber-600">
+              ⚠️ Girilen fiyatlar seçili {vcIds.length} araç sınıfının hepsine aynı şekilde uygulanır.
+            </p>
+          )}
+        </div>
+
         {ready && (
           <>
-            {/* Hızlı doldur */}
-            <div className="flex items-center gap-3 rounded-lg bg-gray-50 px-4 py-2.5 text-sm">
-              <span className="text-gray-500">Hızlı doldur:</span>
+            {/* Hızlı doldur + legend */}
+            <div className="flex flex-wrap items-center gap-3 rounded-lg bg-gray-50 px-4 py-2.5 text-sm">
+              <span className="text-gray-500">Tümüne uygula:</span>
               <input
-                type="number" placeholder="Tüm fiyatları gir" min={0}
-                className="input py-1 w-36 text-sm"
-                onBlur={(e) => e.target.value && setAll('price', e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && setAll('price', (e.target as HTMLInputElement).value)}
+                type="number" placeholder="Fiyat" min={0}
+                className="input py-1 w-28 text-sm"
+                onBlur={(e) => { if (e.target.value) { applyTo(destinations.map((l) => l.id), e.target.value); e.target.value = ''; } }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    const el = e.target as HTMLInputElement;
+                    applyTo(destinations.map((l) => l.id), el.value); el.value = '';
+                  }
+                }}
               />
-              <span className="text-gray-400 text-xs">Enter veya odak kayb ında tüm satırlara uygulanır</span>
-              <span className="ml-auto text-xs text-blue-600 font-medium">
+              <TypeLegend />
+              <span className="ml-auto text-xs font-medium text-blue-600">
                 {filledCount} / {destinations.length} doldu
               </span>
             </div>
 
-            {/* Destinasyon tablosu */}
-            <div className="max-h-[420px] overflow-y-auto rounded-lg border border-gray-200">
+            {/* Destinasyon tablosu — bölgeye göre gruplu */}
+            <div className="max-h-[460px] overflow-y-auto rounded-lg border border-gray-200">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-gray-50 z-10">
-                  <tr className="text-xs text-gray-500 border-b border-gray-200">
+                <thead className="sticky top-0 z-10 bg-gray-50">
+                  <tr className="border-b border-gray-200 text-xs text-gray-500">
                     <th className="px-4 py-2.5 text-left font-medium">Nereye</th>
                     <th className="px-4 py-2.5 text-left font-medium w-36">Fiyat (₺)</th>
-                    <th className="px-4 py-2.5 text-left font-medium w-28">Dönüş İnd. (%)</th>
+                    <th className="px-4 py-2.5 text-left font-medium w-56">Dönüş İnd. (%)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {destinations.map((l) => {
-                    const hasPrice = prices[l.id]?.price && Number(prices[l.id].price) > 0;
-                    return (
-                      <tr key={l.id}
-                        className={`border-b border-gray-100 ${hasPrice ? 'bg-green-50/40' : ''}`}>
+                  {/* Havalimanları */}
+                  {grouped.airports.map((l) => renderRow(l))}
+
+                  {/* Bölgeler + altındaki oteller */}
+                  {grouped.regionGroups.map((g) => (
+                    <Fragment key={g.region.id}>
+                      <tr className="border-b border-amber-200 bg-amber-50/60">
                         <td className="px-4 py-2">
-                          <LocationCell name={l.name} type={l.type} />
+                          <LocationCell name={g.region.name} type="region" />
+                          {g.children.length > 0 && (
+                            <span className="ml-2 text-xs text-gray-500">{g.children.length} otel</span>
+                          )}
                         </td>
                         <td className="px-4 py-2">
-                          <input
-                            type="number" min={0} placeholder="—"
-                            className="input py-1 text-sm w-32"
-                            value={prices[l.id]?.price ?? ''}
-                            onChange={(e) =>
-                              setPrices((p) => ({ ...p, [l.id]: { ...p[l.id], disc: p[l.id]?.disc ?? defaultDisc, price: e.target.value } }))
-                            }
-                          />
+                          {g.isDest ? (
+                            <input type="number" min={0} placeholder="—" className="input py-1 text-sm w-32"
+                              value={prices[g.region.id]?.price ?? ''}
+                              onChange={(e) => setPrice(g.region.id, e.target.value)} />
+                          ) : <span className="text-xs text-gray-400">kalkış noktası</span>}
                         </td>
                         <td className="px-4 py-2">
-                          <input
-                            type="number" min={0} max={100} placeholder={defaultDisc}
-                            className="input py-1 text-sm w-20"
-                            value={prices[l.id]?.disc ?? ''}
-                            onChange={(e) =>
-                              setPrices((p) => ({ ...p, [l.id]: { ...p[l.id], price: p[l.id]?.price ?? '', disc: e.target.value } }))
-                            }
-                          />
+                          <div className="flex items-center gap-2">
+                            {g.isDest && (
+                              <input type="number" min={0} max={100} placeholder={defaultDisc}
+                                className="input py-1 text-sm w-20"
+                                value={prices[g.region.id]?.disc ?? ''}
+                                onChange={(e) => setDisc(g.region.id, e.target.value)} />
+                            )}
+                            {g.children.length > 0 && (
+                              <button type="button"
+                                title="Bu bölgedeki tüm otellere aynı fiyatı uygula"
+                                onClick={() => applyTo(g.children.map((h) => h.id), prices[g.region.id]?.price ?? '')}
+                                className="rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-medium text-amber-700 hover:bg-amber-50">
+                                ↓ otellere uygula
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
-                    );
-                  })}
+                      {g.children.map((h) => renderRow(h, true))}
+                    </Fragment>
+                  ))}
+
+                  {/* Bölgesi atanmamış oteller */}
+                  {grouped.orphanHotels.length > 0 && (
+                    <Fragment>
+                      <tr className="border-b border-gray-200 bg-gray-100">
+                        <td colSpan={3} className="px-4 py-2 text-xs font-semibold text-gray-500">
+                          🏨 Bölgesi atanmamış oteller ({grouped.orphanHotels.length}) —
+                          <span className="font-normal"> Lokasyonlar sayfasından “Bağlı Bölge” seçebilirsiniz</span>
+                        </td>
+                      </tr>
+                      {grouped.orphanHotels.map((h) => renderRow(h, true))}
+                    </Fragment>
+                  )}
+
+                  {/* Diğer türler */}
+                  {grouped.others.map((l) => renderRow(l))}
                 </tbody>
               </table>
             </div>
@@ -200,13 +348,15 @@ function BulkPanel({
             <div className="flex items-center gap-3">
               <button
                 onClick={handleSave}
-                disabled={filledCount === 0}
+                disabled={rowCount === 0}
                 className="btn btn-primary py-1.5 px-5 text-sm disabled:opacity-50"
               >
-                {filledCount} Fiyatı Kaydet
+                {rowCount} Fiyatı Kaydet
               </button>
               <button onClick={onClose} className="btn btn-outline py-1.5 px-4 text-sm">İptal</button>
-              <span className="text-xs text-gray-400">Boş bırakılan satırlar atlanır</span>
+              <span className="text-xs text-gray-400">
+                {filledCount} güzergah × {vcIds.length} araç sınıfı · boş satırlar atlanır
+              </span>
             </div>
           </>
         )}

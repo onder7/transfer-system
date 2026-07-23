@@ -29,6 +29,14 @@ interface ExtraService {
   requiresNote: boolean; maxQuantity: number;
 }
 
+type PayMethod = 'online' | 'bank' | 'cash';
+
+const PAY_METHOD_INFO: Record<PayMethod, { icon: string; title: string; desc: string }> = {
+  online: { icon: '💳', title: 'Kredi / Banka Kartı', desc: 'PayTR güvenceli online ödeme' },
+  bank:   { icon: '🏦', title: 'Havale / EFT',        desc: 'Banka hesabına transfer yapın' },
+  cash:   { icon: '💵', title: 'Araçta Ödeme',        desc: 'Transfer sırasında şoföre ödeyin' },
+};
+
 interface BookingForm {
   guestName:     string;
   guestEmail:    string;
@@ -82,6 +90,17 @@ export function BookingPage() {
   const initDate = valid ? `${dateObj!.getFullYear()}-${pad(dateObj!.getMonth() + 1)}-${pad(dateObj!.getDate())}` : '';
   const initTime = valid ? `${pad(dateObj!.getHours())}:${pad(dateObj!.getMinutes())}` : '';
 
+  // Dönüş tarihi/saati — ana sayfadan aktarılır, formda düzenlenebilir
+  const retParam = params.get('returnDate') ?? '';
+  const retObj   = retParam ? new Date(retParam) : null;
+  const retValid = retObj && !isNaN(+retObj);
+  const [returnDate, setReturnDate] = useState(
+    retValid ? `${retObj!.getFullYear()}-${pad(retObj!.getMonth() + 1)}-${pad(retObj!.getDate())}` : '',
+  );
+  const [returnTime, setReturnTime] = useState(
+    retValid ? `${pad(retObj!.getHours())}:${pad(retObj!.getMinutes())}` : '',
+  );
+
   const [adults, setAdults]     = useState(Number(params.get('adultCount') ?? '1'));
   const [children, setChildren] = useState(Number(params.get('childCount') ?? '0'));
   const [returnWanted, setReturnWanted] = useState(retFlt);
@@ -133,6 +152,24 @@ export function BookingPage() {
     staleTime: 60_000,
   });
   const extras = extraData?.extras ?? [];
+
+  // Aktif ödeme yöntemleri — admin panelinden yönetilir, yalnızca aktif olanlar gösterilir
+  const { data: methodData } = useQuery({
+    queryKey: ['payment-methods'],
+    queryFn: () => api.get<{ methods: { online: boolean; bank: boolean; cash: boolean } }>('/payments/methods').then((r) => r.data),
+    staleTime: 60_000,
+  });
+  const availableMethods = useMemo(() => {
+    const m = methodData?.methods;
+    if (!m) return [] as PayMethod[];
+    return (['online', 'bank', 'cash'] as PayMethod[]).filter((k) => m[k]);
+  }, [methodData]);
+
+  const [payMethod, setPayMethod] = useState<PayMethod | ''>('');
+  // Tek yöntem varsa otomatik seç
+  useEffect(() => {
+    if (!payMethod && availableMethods.length === 1) setPayMethod(availableMethods[0]);
+  }, [availableMethods, payMethod]);
 
   // Seçilen aracın güncel fiyatı — yolcu sayısı değişince yeniden sorgulanır
   const { data: searchData } = useQuery({
@@ -210,6 +247,10 @@ export function BookingPage() {
         adultCount:      adults,
         childCount:      children,
         returnFlight:    returnWanted,
+        // Dönüş bacağı ayrı bir rezervasyon olarak oluşturulur → tarih zorunlu
+        returnDate:      returnWanted && returnDate
+          ? new Date(`${returnDate}T${returnTime || '00:00'}:00`).toISOString()
+          : undefined,
         flightNumber:    form.flightNumber || undefined,
         // Adres, havalimanı olmayan tarafa yazılır (alış otel ise customFrom, varış otel ise customTo)
         customFromAddress: !fromIsAirport && address ? address : undefined,
@@ -221,7 +262,20 @@ export function BookingPage() {
         guestPhone:      form.guestPhone ? `${dialCode} ${form.guestPhone}`.trim() : undefined,
         currency:        'TRY',
       });
-      navigate(`/payment/${data.booking.id}`);
+
+      const bookingId = data.booking.id;
+
+      // Seçilen ödeme yöntemini uygula
+      if (payMethod === 'cash') {
+        await api.post(`/payments/cash/${bookingId}`);
+        navigate(`/confirmation/${bookingId}`);
+      } else if (payMethod === 'bank') {
+        await api.post(`/payments/bank-transfer/${bookingId}`);
+        navigate(`/confirmation/${bookingId}`);
+      } else {
+        // Online ödeme → PayTR iframe sayfası
+        navigate(`/payment/${bookingId}`);
+      }
     } catch (e: any) {
       setServerError(e.response?.data?.error ?? t('errors.networkError'));
     } finally {
@@ -404,6 +458,33 @@ export function BookingPage() {
                 onChange={(e) => setReturnWanted(e.target.checked)} />
               Dönüş transferi istiyorum.
             </label>
+
+            {returnWanted && (
+              <div className="mt-4 border-t border-gray-100 pt-4">
+                <p className="mb-3 text-sm font-medium text-gray-900">
+                  {toName || '—'} <span className="font-normal text-emerald-600">konumundan dönüş</span>
+                  <span className="ml-1 font-normal text-gray-400">→ {fromName || '—'}</span>
+                </p>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div>
+                    <label className="label">Dönüş Tarihi *</label>
+                    <input type="date" className="input" value={returnDate}
+                      min={initDate || undefined}
+                      onChange={(e) => setReturnDate(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label">Dönüş Saati *</label>
+                    <input type="time" className="input" value={returnTime}
+                      onChange={(e) => setReturnTime(e.target.value)} />
+                  </div>
+                </div>
+                {!returnDate && (
+                  <p className="mt-2 text-xs text-amber-600">
+                    Dönüş için ayrı bir transfer planlanır — tarih ve saat zorunludur.
+                  </p>
+                )}
+              </div>
+            )}
           </section>
 
           {/* Toplam Fiyat + onay + tamamla */}
@@ -425,6 +506,37 @@ export function BookingPage() {
               <span className="text-2xl font-extrabold text-gray-900">
                 {grandTotal != null ? `${grandTotal.toLocaleString('tr-TR')} ₺` : '—'}
               </span>
+            </div>
+
+            {/* ── Ödeme Yöntemi (yalnızca admin'de aktif olanlar) ── */}
+            <div className="mt-5">
+              <h3 className="mb-3 text-base font-bold text-gray-900">Ödeme Yöntemi</h3>
+              {availableMethods.length === 0 ? (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  Şu anda aktif bir ödeme yöntemi bulunmuyor. Lütfen bizimle iletişime geçin.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {availableMethods.map((m) => {
+                    const info = PAY_METHOD_INFO[m];
+                    const active = payMethod === m;
+                    return (
+                      <label key={m}
+                        className={`flex cursor-pointer items-center gap-3 rounded-xl border-2 p-3 transition-colors ${
+                          active ? 'border-emerald-500 bg-emerald-50/60' : 'border-gray-200 hover:border-emerald-300'
+                        }`}>
+                        <input type="radio" name="payMethod" className="size-4 accent-emerald-600"
+                          checked={active} onChange={() => setPayMethod(m)} />
+                        <span className="text-2xl">{info.icon}</span>
+                        <span className="flex-1">
+                          <span className="block text-sm font-semibold text-gray-900">{info.title}</span>
+                          <span className="block text-xs text-gray-500">{info.desc}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <label className="mt-4 flex items-start gap-2 text-xs text-gray-600">
@@ -451,7 +563,12 @@ export function BookingPage() {
               </div>
             )}
 
-            <button type="submit" disabled={submitting}
+            <button type="submit" disabled={submitting || !payMethod || (returnWanted && !returnDate)}
+              title={
+                !payMethod ? 'Önce ödeme yöntemi seçin'
+                : returnWanted && !returnDate ? 'Dönüş tarihi ve saatini seçin'
+                : undefined
+              }
               className="mt-5 w-full rounded-xl bg-[#8a7355] py-4 text-base font-bold text-white
                          transition-colors hover:bg-[#75603f] disabled:opacity-60">
               {submitting ? t('common.loading') : 'Rezervasyonu Tamamla'}

@@ -32,11 +32,16 @@ const app = express();
 
 app.use(helmet());
 const allowedOrigins = env.CORS_ORIGIN.split(',').map((o) => o.trim());
+// Yerel ağ (LAN) origin'leri: localhost, 127.x, ve RFC1918 özel IP'ler (192.168.x, 10.x, 172.16-31.x).
+// Sistem sahada bir yerel ağda çalıştığı için (telefon/tablet vb. aynı ağdan erişir) bunlara izin verilir.
+const LAN_ORIGIN = /^https?:\/\/(localhost|127\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)(:\d+)?$/;
 app.use(cors({
   origin: (origin, cb) => {
-    // origin yoksa (server-to-server, curl vb.) veya whitelist'teyse izin ver
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error(`CORS: ${origin} izin verilmedi`));
+    // origin yoksa (server-to-server, curl vb.), whitelist'teyse veya yerel ağdaysa izin ver
+    if (!origin || allowedOrigins.includes(origin) || LAN_ORIGIN.test(origin)) return cb(null, true);
+    // CORS reddi 500'e dönüşmesin — sessizce reddet (tarayıcı zaten engeller)
+    logger.warn({ origin }, 'CORS: izin verilmeyen origin reddedildi');
+    cb(null, false);
   },
   credentials: true,
 }));

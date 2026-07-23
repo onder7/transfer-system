@@ -34,9 +34,9 @@ const NUMERIC_META: Record<string, { label: string; description: string; unit: s
     unit: 'dakika', min: 5, max: 60,
   },
   vehicle_turnaround_minutes: {
-    label:       'Araç Dönüş Süresi (Çakışma Penceresi)',
-    description: 'Bir transferin önünde ve arkasında kaç dakikalık süre bloklanacak. Bu pencere içinde aynı araç sınıfına yeni rezervasyon alınmaz.',
-    unit: 'dakika', min: 30, max: 720,
+    label:       'Araç Temizlik/Hazırlık Payı (dk)',
+    description: 'Yolculuk süresi artık haritadan (OSRM) otomatik hesaplanır. Bu değer, hesaplanan sürenin önüne ve arkasına eklenen sabit paydır (araca varış + temizlik/hazırlık). Meşguliyet penceresi = bu pay + haritanın tahmini yolculuk süresi; yolcu alındıktan sonra gerçek saatle güncellenir.',
+    unit: 'dakika', min: 5, max: 120,
   },
 };
 

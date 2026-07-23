@@ -19,6 +19,8 @@ export const AdminCreateLocationSchema = z.object({
   lng:      z.number().nullable().optional(),
   address:  z.string().optional().nullable(),
   isActive: z.boolean().optional().default(true),
+  // Bağlı olduğu bölge (otel → bölge); boş bırakılabilir
+  regionId: z.string().optional().nullable(),
 });
 export type AdminCreateLocationInput = z.infer<typeof AdminCreateLocationSchema>;
 

@@ -15,6 +15,9 @@ RUN npm ci
 COPY packages/shared/ ./packages/shared/
 COPY backend/         ./backend/
 
+# Prisma client tiplerini üret
+RUN cd backend && npx prisma generate
+
 # shared → backend sırası önemli
 RUN npm run build -w packages/shared
 RUN npm run build -w backend

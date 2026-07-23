@@ -20,8 +20,53 @@ interface Booking {
   toLocation:    { name: string };
   vehicleClass:  { id: string; name: string };
   payment:       { status: string; amount: number; currency: string; method: string } | null;
-  assignment:    { status: string; vehiclePlate: string | null; driver: { firstName: string; lastName: string } | null } | null;
+  assignment:    { status: string; vehiclePlate: string | null; pickedUpAt: string | null; driver: { firstName: string; lastName: string } | null } | null;
   flightInfo:    FlightInfo | null;
+  returnFlight:  boolean;
+  estimatedDurationMin: number | null;
+  outboundId:    string | null;
+  returnLeg:     { id: string; bookingRef: string; transferDate: string; status: string } | null;
+  outbound:      { id: string; bookingRef: string; transferDate: string } | null;
+}
+
+const fmtLegDate = (s: string) =>
+  new Date(s).toLocaleString('tr-TR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+// Atama (takip) durumu — şoför iş akışı
+const ASSIGN_STATUS: Record<string, { label: string; badge: string }> = {
+  ASSIGNED:  { label: 'Atandı',        badge: 'badge-blue' },
+  EN_ROUTE:  { label: 'Yola Çıktı',    badge: 'badge-yellow' },
+  PICKED_UP: { label: 'Yolcu Alındı',  badge: 'badge-green' },
+  COMPLETED: { label: 'Tamamlandı',    badge: 'badge-gray' },
+};
+
+// Harita tahmini süreyi okunur biçime çevir (97 → "1 sa 37 dk")
+function fmtDuration(min: number | null): string {
+  if (min == null) return '—';
+  if (min < 60) return `${min} dk`;
+  const h = Math.floor(min / 60), m = min % 60;
+  return m ? `${h} sa ${m} dk` : `${h} sa`;
+}
+
+// Gidiş / dönüş bacağı rozeti
+function LegBadge({ b }: { b: Booking }) {
+  if (b.outboundId) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md bg-indigo-100 px-1.5 py-0.5 text-[11px] font-semibold text-indigo-700 ring-1 ring-indigo-200"
+        title={b.outbound ? `Gidiş: ${b.outbound.bookingRef.slice(-8)} · ${fmtLegDate(b.outbound.transferDate)}` : undefined}>
+        ↩ DÖNÜŞ
+      </span>
+    );
+  }
+  if (b.returnLeg) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200"
+        title={`Dönüş: ${b.returnLeg.bookingRef.slice(-8)} · ${fmtLegDate(b.returnLeg.transferDate)}`}>
+        ⇄ GİDİŞ
+      </span>
+    );
+  }
+  return null;
 }
 
 interface FlightInfo {
@@ -144,7 +189,11 @@ function AssignModal({ booking, onClose }: { booking: Booking; onClose: () => vo
     queryKey: ['admin', 'vehicles-available', booking.vehicleClass.id, booking.transferDate],
     queryFn:  () =>
       api.get<{ vehicles: Vehicle[] }>('/admin/vehicles/available', {
-        params: { vehicleClassId: booking.vehicleClass.id, transferDate: booking.transferDate },
+        params: {
+          vehicleClassId: booking.vehicleClass.id,
+          transferDate: booking.transferDate,
+          ...(booking.estimatedDurationMin != null ? { estimatedDurationMin: booking.estimatedDurationMin } : {}),
+        },
       }).then((r) => r.data),
   });
 
@@ -638,7 +687,18 @@ export function BookingsPage() {
                       }`}
                     >
                       <td className="px-4 py-3 font-mono text-xs text-brand-600">
-                        {b.bookingRef.slice(-8)}
+                        <div>{b.bookingRef.slice(-8)}</div>
+                        <LegBadge b={b} />
+                        {b.returnLeg && (
+                          <div className="mt-0.5 font-sans text-[11px] text-gray-400">
+                            dönüş: {fmtLegDate(b.returnLeg.transferDate)}
+                          </div>
+                        )}
+                        {b.outbound && (
+                          <div className="mt-0.5 font-sans text-[11px] text-gray-400">
+                            gidiş: {fmtLegDate(b.outbound.transferDate)}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div>{b.guestName ?? '—'}</div>
@@ -661,7 +721,7 @@ export function BookingsPage() {
                       </td>
                       <td className="px-4 py-3 text-xs text-gray-500">
                         {b.assignment ? (
-                          <div>
+                          <div className="space-y-1">
                             <div className="font-medium text-gray-700">
                               {b.assignment.driver
                                 ? `${b.assignment.driver.firstName} ${b.assignment.driver.lastName}`
@@ -670,10 +730,23 @@ export function BookingsPage() {
                             {b.assignment.vehiclePlate && (
                               <div className="font-mono text-gray-400">{b.assignment.vehiclePlate}</div>
                             )}
+                            {/* Takip durumu (şoför iş akışı) */}
+                            <span className={ASSIGN_STATUS[b.assignment.status]?.badge ?? 'badge-gray'}>
+                              {ASSIGN_STATUS[b.assignment.status]?.label ?? b.assignment.status}
+                            </span>
+                            {b.assignment.pickedUpAt && (
+                              <div className="text-[11px] text-emerald-600">
+                                🧍 alındı: {fmtLegDate(b.assignment.pickedUpAt)}
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <span className="text-gray-300">—</span>
                         )}
+                        {/* Harita tahmini yolculuk süresi */}
+                        <div className="mt-1 text-[11px] text-gray-400" title="Haritadan (OSRM) otomatik hesaplanan tahmini yolculuk süresi — çakışma penceresinde kullanılır">
+                          🗺️ ~{fmtDuration(b.estimatedDurationMin)}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">

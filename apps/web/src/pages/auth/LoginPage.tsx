@@ -21,7 +21,9 @@ export function LoginPage() {
     setError('');
     try {
       await login(email, password);
-      navigate(from, { replace: true });
+      // Şoför → doğrudan şoför paneline; diğerleri geldiği sayfaya
+      const role = useAuthStore.getState().user?.role;
+      navigate(role === 'DRIVER' ? '/surucu' : from, { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.error ?? t('errors.networkError'));
     } finally {
@@ -37,6 +39,12 @@ export function LoginPage() {
           Hesabınız yok mu?{' '}
           <Link to="/register" className="font-medium text-brand-600 hover:text-brand-700">
             {t('nav.register')}
+          </Link>
+        </p>
+        <p className="mt-2 text-center text-xs text-gray-500">
+          Misafir olarak rezervasyon yaptıysanız:{' '}
+          <Link to="/booking-lookup" className="font-semibold text-blue-600 hover:underline">
+            🔍 Rezervasyon Sorgula
           </Link>
         </p>
 

@@ -107,8 +107,11 @@ export async function listBookings(params: {
         toLocation:      { select: { name: true } },
         vehicleClass:    { select: { id: true, name: true } },
         payment:         { select: { status: true, amount: true, currency: true, method: true } },
-        assignment:      { select: { status: true, vehiclePlate: true, driver: { select: { firstName: true, lastName: true } } } },
+        assignment:      { select: { status: true, vehiclePlate: true, pickedUpAt: true, driver: { select: { firstName: true, lastName: true } } } },
         flightInfo:      { select: { status: true, delayMinutes: true, scheduledAt: true, estimatedAt: true, actualAt: true, lastCheckedAt: true, depIata: true, depName: true, depUtcOffset: true, arrIata: true, arrName: true, arrUtcOffset: true } },
+        // Gidiş-dönüş bacak bağlantısı
+        returnLeg:       { select: { id: true, bookingRef: true, transferDate: true, status: true } },
+        outbound:        { select: { id: true, bookingRef: true, transferDate: true } },
       },
     }),
     prisma.booking.count({ where }),

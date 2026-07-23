@@ -268,6 +268,10 @@ export function DesignHomePage() {
     sp.set('adultCount', String(searchParams.adultCount));
     sp.set('childCount', String(searchParams.childCount));
     sp.set('returnFlight', searchParams.tripType === 'round-trip' ? 'true' : 'false');
+    // Dönüş tarihi/saati de aktarılmalı — aksi halde dönüş bacağı planlanamıyor
+    if (searchParams.tripType === 'round-trip' && searchParams.returnDate) {
+      sp.set('returnDate', toIsoDateTime(searchParams.returnDate, searchParams.returnTime));
+    }
     if (searchParams.flightNo) sp.set('flightNumber', searchParams.flightNo);
     sp.set('vehicleClassId', booking.selectedVehicleId);
     

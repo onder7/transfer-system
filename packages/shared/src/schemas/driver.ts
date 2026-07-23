@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const UpdateAssignmentStatusSchema = z.object({
-  status: z.enum(['EN_ROUTE', 'COMPLETED']),
+  status: z.enum(['EN_ROUTE', 'PICKED_UP', 'COMPLETED']),
 });
 
 export const AssignDriverSchema = z.object({

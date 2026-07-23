@@ -13,6 +13,10 @@ const schema = z.object({
   SETTINGS_ENCRYPTION_KEY: z.string().min(32), // hex 32 byte
   BASE_CURRENCY:         z.string().default('TRY'),
   SENTRY_DSN:            z.string().optional(),
+  // Web Push (VAPID) — opsiyonel; tanımlı değilse push devre dışı
+  VAPID_PUBLIC_KEY:      z.string().optional(),
+  VAPID_PRIVATE_KEY:     z.string().optional(),
+  VAPID_SUBJECT:         z.string().default('mailto:info@example.com'),
 });
 
 const result = schema.safeParse(process.env);

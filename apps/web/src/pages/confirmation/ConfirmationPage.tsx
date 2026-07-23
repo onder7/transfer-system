@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '@/lib/api';
+import { pushSupported, pushPermission, subscribeToPush, type PushResult } from '@/lib/push';
+import { Bell, BellOff, CheckCircle2, Loader2, Map } from 'lucide-react';
 
 interface Booking {
   bookingRef:   string;
@@ -94,6 +96,91 @@ function StatusBanner({ booking }: { booking: Booking }) {
   );
 }
 
+// ─── Push Bildirim Abonelik Bileşeni ──────────────────────────────────────────
+
+function PushNotificationBanner({ bookingId }: { bookingId: string }) {
+  const [state, setState] = useState<'idle' | 'loading' | 'subscribed' | 'denied' | 'unsupported' | 'error'>('idle');
+  const [msg, setMsg] = useState('');
+
+  useEffect(() => {
+    // Push desteklenmiyor veya zaten izin verilmiş
+    if (!pushSupported()) {
+      setState('unsupported');
+      return;
+    }
+    if (pushPermission() === 'granted') {
+      // Zaten izin var — sessizce abone ol
+      subscribeToPush(bookingId).then((r) => {
+        setState(r.ok ? 'subscribed' : 'error');
+      });
+    }
+  }, [bookingId]);
+
+  const handleSubscribe = async () => {
+    setState('loading');
+    const result: PushResult = await subscribeToPush(bookingId);
+    if (result.ok) {
+      setState('subscribed');
+    } else if (result.reason === 'denied') {
+      setState('denied');
+      setMsg('Bildirim izni reddedildi. Tarayıcı ayarlarından izin verebilirsiniz.');
+    } else {
+      setState('error');
+      setMsg(result.message ?? 'Bildirim kurulumu başarısız oldu.');
+    }
+  };
+
+  // Desteklenmiyor → hiçbir şey gösterme
+  if (state === 'unsupported') return null;
+
+  // Zaten abone
+  if (state === 'subscribed') {
+    return (
+      <div className="mt-4 flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-4 py-3">
+        <CheckCircle2 size={18} className="shrink-0 text-emerald-500" />
+        <p className="text-sm text-emerald-700">
+          <strong>Bildirimler açık!</strong> Şoförünüz yola çıktığında ve yaklaştığında bilgilendirileceksiniz.
+        </p>
+      </div>
+    );
+  }
+
+  // Reddedildi
+  if (state === 'denied') {
+    return (
+      <div className="mt-4 flex items-center gap-2 rounded-xl bg-gray-50 border border-gray-200 px-4 py-3">
+        <BellOff size={18} className="shrink-0 text-gray-400" />
+        <p className="text-sm text-gray-500">{msg}</p>
+      </div>
+    );
+  }
+
+  // Hata
+  if (state === 'error') {
+    return (
+      <div className="mt-4 flex items-center gap-2 rounded-xl bg-red-50 border border-red-200 px-4 py-3">
+        <BellOff size={18} className="shrink-0 text-red-400" />
+        <p className="text-sm text-red-600">{msg || 'Bildirim kurulumu başarısız.'}</p>
+      </div>
+    );
+  }
+
+  // Abone ol butonu
+  return (
+    <button
+      onClick={handleSubscribe}
+      disabled={state === 'loading'}
+      className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
+    >
+      {state === 'loading' ? (
+        <><Loader2 size={16} className="animate-spin" /> Etkinleştiriliyor…</>
+      ) : (
+        <><Bell size={16} /> 🔔 Bildirim Al — Şoför durumunu takip et</>
+      )}
+    </button>
+  );
+}
+
 export function ConfirmationPage() {
   const { t }  = useTranslation();
   const { id } = useParams<{ id: string }>();
@@ -131,6 +218,7 @@ export function ConfirmationPage() {
   return (
     <div className="mx-auto max-w-lg px-4 py-12">
       <StatusBanner booking={booking} />
+      <PushNotificationBanner bookingId={id!} />
 
       <div className="mt-6 card p-6 space-y-3">
         <div className="flex justify-between">
@@ -168,6 +256,16 @@ export function ConfirmationPage() {
         <p className="mt-3 text-center text-xs text-gray-400">
           📧 Bilgilendirme e-postası <strong>{booking.guestEmail}</strong> adresine gönderildi.
         </p>
+      )}
+
+      {/* Canlı takip butonu — şoför yoldaysa görünür */}
+      {['EN_ROUTE', 'PICKED_UP', 'ASSIGNED'].includes(booking.status) && (
+        <Link
+          to={`/tracking/${id}`}
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
+        >
+          <Map size={16} /> 🗺️ Şoförü Haritada Takip Et
+        </Link>
       )}
 
       <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-center">

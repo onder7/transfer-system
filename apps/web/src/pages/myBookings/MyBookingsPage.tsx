@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from '@/store/auth.store';
@@ -47,6 +47,19 @@ function BookingCard({ b, onCancel }: { b: Booking; onCancel: () => void }) {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {['EN_ROUTE', 'PICKED_UP', 'ASSIGNED'].includes(b.status) && (
+            <Link
+              to={`/tracking/${b.id}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2.5 py-0.5 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-blue-600"></span>
+              </span>
+              Canlı Takip
+            </Link>
+          )}
           <span className={`badge ${STATUS_COLOR[b.status] ?? 'badge-gray'}`}>
             {t(`myBookings.status.${b.status}`, { defaultValue: b.status })}
           </span>
@@ -100,6 +113,18 @@ function BookingCard({ b, onCancel }: { b: Booking; onCancel: () => void }) {
               </div>
             )}
           </div>
+
+          {['EN_ROUTE', 'PICKED_UP', 'ASSIGNED'].includes(b.status) && (
+            <div className="pt-2">
+              <Link
+                to={`/tracking/${b.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors shadow-sm"
+              >
+                🗺️ Şoförü Haritada Takip Et (Canlı Konum)
+              </Link>
+            </div>
+          )}
 
           {canCancel && (
             <div className="pt-2">

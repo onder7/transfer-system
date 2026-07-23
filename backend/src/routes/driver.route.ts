@@ -5,6 +5,8 @@ import {
   listAssignmentsHandler,
   getAssignmentDetailHandler,
   updateAssignmentStatusHandler,
+  notifyApproachingHandler,
+  updateLocationHandler,
   getFlightInfoHandler,
   assignDriverHandler,
 } from '../controllers/driver.controller.js';
@@ -36,6 +38,20 @@ driverRouter.patch(
   authorize('DRIVER'),
   auditLog('ASSIGNMENT_STATUS_UPDATED', 'DriverAssignment'),
   updateAssignmentStatusHandler,
+);
+
+// POST /api/driver/assignments/:id/notify-approaching — "yaklaştım" bildirimi
+driverRouter.post(
+  '/assignments/:id/notify-approaching',
+  authorize('DRIVER'),
+  notifyApproachingHandler,
+);
+
+// PUT /api/driver/assignments/:id/location — canlı GPS konumu gönder
+driverRouter.put(
+  '/assignments/:id/location',
+  authorize('DRIVER'),
+  updateLocationHandler,
 );
 
 // GET /api/driver/flight/:bookingId — anlık uçuş bilgisi
