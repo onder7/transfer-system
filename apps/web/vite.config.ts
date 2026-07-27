@@ -11,7 +11,12 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'pwa-icon.svg', 'push-sw.js'],
-      workbox: { importScripts: ['push-sw.js'] }, // Web Push handler'ları
+      workbox: {
+        importScripts: ['push-sw.js'], // Web Push handler'ları
+        // Aynı origin'de /admin (ayrı panel) ve /api SW'nin SPA fallback'ine takılmasın;
+        // bunlar ağa (nginx) gitsin. Aksi halde /admin → web app'in 404'u gorunur.
+        navigateFallbackDenylist: [/^\/admin/, /^\/api/],
+      },
       devOptions: { enabled: true },       // dev container'da da manifest/SW servis edilsin
       manifest: {
         name: 'Sipahi VIP Transfer',
