@@ -1,7 +1,6 @@
 import type { Request, Response, NextFunction } from 'express';
 import { UpdateAssignmentStatusSchema, AssignDriverSchema } from '@transfer/shared';
 import * as driverService  from '../services/driver.service.js';
-import { saveDriverLocation } from '../services/driver-location.service.js';
 import { updateBookingFlight } from '../services/flight.service.js';
 import { AppError }        from '../middlewares/error.middleware.js';
 
@@ -43,6 +42,22 @@ export async function notifyApproachingHandler(req: Request, res: Response, next
   } catch (e) { next(e); }
 }
 
+// Şoför canlı konum gönderimi
+export async function updateLocationHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { lat, lng, heading } = req.body as { lat?: number; lng?: number; heading?: number };
+    if (typeof lat !== 'number' || typeof lng !== 'number' || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      res.status(400).json({ error: 'Geçersiz konum' });
+      return;
+    }
+    const result = await driverService.updateDriverLocation(
+      req.params.id as string, req.user!.sub, lat, lng,
+      typeof heading === 'number' ? heading : undefined,
+    );
+    res.json(result);
+  } catch (e) { next(e); }
+}
+
 export async function getFlightInfoHandler(req: Request, res: Response, next: NextFunction) {
   try {
     // Uçuş bilgisini anlık güncelle + dön
@@ -53,42 +68,6 @@ export async function getFlightInfoHandler(req: Request, res: Response, next: Ne
     });
     if (!info) throw new AppError(404, 'Uçuş bilgisi bulunamadı (uçuş no kayıtlı mı?)');
     res.json({ flightInfo: info });
-  } catch (e) { next(e); }
-}
-
-// ─── Canlı konum gönderimi (Geolocation → Redis) ─────────────────────────────
-
-export async function updateLocationHandler(req: Request, res: Response, next: NextFunction) {
-  try {
-    const driverId    = req.user!.sub;
-    const assignmentId = req.params.id as string;
-    const { lat, lng, heading, speed } = req.body as {
-      lat: number; lng: number; heading?: number | null; speed?: number | null;
-    };
-    if (typeof lat !== 'number' || typeof lng !== 'number') {
-      throw new AppError(400, 'lat ve lng gereklidir');
-    }
-
-    // Assignment sahipliğini ve aktif durumu doğrula
-    const { prisma } = await import('../config/database.js');
-    const assignment = await prisma.driverAssignment.findUnique({
-      where: { id: assignmentId },
-      select: { driverId: true, status: true },
-    });
-    if (!assignment) throw new AppError(404, 'Atama bulunamadı');
-    if (assignment.driverId !== driverId) throw new AppError(403, 'Yetki yok');
-    if (!['EN_ROUTE', 'PICKED_UP'].includes(assignment.status)) {
-      throw new AppError(400, 'Konum yalnızca yolda veya yolcu alındığında gönderilebilir');
-    }
-
-    await saveDriverLocation(assignmentId, {
-      lat,
-      lng,
-      heading: heading ?? null,
-      speed:   speed ?? null,
-    });
-
-    res.json({ ok: true });
   } catch (e) { next(e); }
 }
 

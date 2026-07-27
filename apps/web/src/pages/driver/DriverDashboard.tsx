@@ -126,8 +126,8 @@ function AssignmentCard({ a }: { a: Assignment }) {
   const st = STATUS[a.status];
   const fi = b.flightInfo;
 
-  // Canlı konum paylaşımı — ASSIGNED, EN_ROUTE veya PICKED_UP durumunda aktif
-  const isLocationActive = ['ASSIGNED', 'EN_ROUTE', 'PICKED_UP'].includes(a.status);
+  // Canlı konum paylaşımı — yalnızca aktif transferde (backend EN_ROUTE/PICKED_UP kabul eder)
+  const isLocationActive = ['EN_ROUTE', 'PICKED_UP'].includes(a.status);
   const { status: locStatus, sendManualLocation } = useDriverLocation(a.id, isLocationActive);
 
   return (

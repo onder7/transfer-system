@@ -295,6 +295,8 @@ model DriverAssignment {
   pickedUpAt     DateTime?    // şoför "yolcuyu aldım" dediğinde — çakışma penceresi buradan başlar
   completedAt    DateTime?
 
+  // Not: Canlı konum (Faz 3) DB'de tutulmaz — geçici veri Redis'te (driver-location.service, TTL 120s)
+
   @@index([driverId])
 }
 

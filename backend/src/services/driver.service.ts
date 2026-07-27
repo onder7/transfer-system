@@ -2,6 +2,7 @@ import { prisma }            from '../config/database.js';
 import { AppError }          from '../middlewares/error.middleware.js';
 import { queueNotification } from './notification.service.js';
 import { sendToBooking }     from './push.service.js';
+import { saveDriverLocation } from './driver-location.service.js';
 import { logger }            from '../config/logger.js';
 import type { AssignDriverInput } from '@transfer/shared';
 
@@ -215,6 +216,28 @@ export async function updateAssignmentStatus(
 
   logger.info({ assignmentId, newStatus }, 'Atama statüsü güncellendi');
   return { ok: true, status: newStatus };
+}
+
+// Şoför canlı konumunu kaydet (yalnızca aktif transfer sırasında).
+// Konum geçici veridir → Redis'te TTL'li tutulur (driver-location.service), DB'ye yazılmaz.
+export async function updateDriverLocation(
+  assignmentId: string,
+  driverId: string,
+  lat: number,
+  lng: number,
+  heading?: number,
+) {
+  const a = await prisma.driverAssignment.findUnique({
+    where:  { id: assignmentId },
+    select: { driverId: true, status: true },
+  });
+  if (!a) throw new AppError(404, 'Atama bulunamadı');
+  if (a.driverId !== driverId) throw new AppError(403, 'Yetki yok');
+  if (!['EN_ROUTE', 'PICKED_UP'].includes(a.status)) {
+    throw new AppError(400, 'Konum yalnızca aktif transfer sırasında paylaşılabilir');
+  }
+  await saveDriverLocation(assignmentId, { lat, lng, heading: heading ?? null, speed: null });
+  return { ok: true };
 }
 
 // Şoför "yaklaştım/kapıdayım" der → müşteriye push (durum değişmez)
